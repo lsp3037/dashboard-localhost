@@ -1,10 +1,23 @@
-export default function Home() {
+import type { Metadata } from 'next';
+
+import { ProjectBrowser } from '@/components/project-browser';
+import { loadInventory } from '@/lib/server/overview';
+
+export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'Inventário',
+};
+
+export default function DashboardPage() {
+  const { projects, roots, lastScanLabel, lastScanTitle } = loadInventory();
+
   return (
-    <main className="p-8">
-      <h1 className="text-2xl font-semibold">Hub de Projetos</h1>
-      <p className="mt-2 max-w-prose text-sm text-hub-text-muted">
-        Fundação pronta. A interface do hub (inventário de projetos) será implementada na fase F2.
-      </p>
-    </main>
+    <ProjectBrowser
+      projects={projects}
+      roots={roots}
+      lastScanLabel={lastScanLabel}
+      lastScanTitle={lastScanTitle}
+    />
   );
 }

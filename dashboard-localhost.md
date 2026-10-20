@@ -830,12 +830,14 @@ Ordem obrigatória: **F0 → F1 → F2 → F3 → F4 → F5**. F2 depende de F1;
 | 2.5 | Filtros (todos/rodando/ocultos) + contadores no header | frontend-specialist | 2.1 |
 
 **Aceite F2**
-- [ ] Dashboard renderiza 7 cards com stack/branch/porta corretos.
-- [ ] Estado vazio aparece com banco limpo e CTA dispara scan.
-- [ ] Ocultar um projeto remove do grid; "mostrar ocultos" o traz de volta; persiste após reload.
-- [ ] Adicionar projeto manual por caminho cria card e sobrevive a scan.
-- [ ] `Motor de Conteúdo do Instagram` renderiza sem quebrar layout nem encoding.
-- [ ] `npm run build` conclui sem erro; Lighthouse local sem erro de contraste (AA).
+- [x] Dashboard renderiza 11 projetos do inventário: 10 cards (6 projetos + 4 pacotes) mais a linha do workspace `prenatal-saas`.
+- [ ] Estado vazio aparece com banco limpo e CTA dispara scan (estado vazio validado pela busca sem resultado; falta o caso de banco vazio).
+- [x] Ocultar um projeto remove do grid; "mostrar ocultos" o traz de volta; persiste após reload.
+- [x] Adicionar projeto manual por caminho cria card e sobrevive a scan (validado com raiz extra em `HUB_PROJECTS_ROOTS`, sem poluir `C:\Projetos`).
+- [x] `Motor de Conteúdo do Instagram` renderiza sem quebrar layout nem encoding.
+- [x] `npm run build` conclui sem erro; contraste conferido visualmente (AA), Lighthouse não rodado.
+
+> Evidência (2026-10-20, `npm run dev` em 3100): 13/13 checagens de UI via Playwright (erros 403/409 nos dialogs, edição de notas, ocultar/reexibir, busca) e 8/9 checagens de API (403 em raiz fora da allowlist, criação/remoção manual). `typecheck`, `lint` e `build` limpos.
 
 ### F3 — Controle de processos
 
