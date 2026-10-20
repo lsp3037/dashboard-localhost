@@ -18,6 +18,7 @@ export function toProjectDto(row: ProjectRow, allowedScripts: readonly string[])
   return {
     id: row.id,
     name: row.name,
+    packageName: row.packageName,
     path: row.path,
     parentId: row.parentId,
     kind: row.kind,

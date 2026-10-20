@@ -53,6 +53,7 @@ export async function POST(request: Request): Promise<Response> {
     const created = insertManualProject({
       path: absolutePath,
       name: scanned.name,
+      packageName: scanned.packageName,
       kind: scanned.kind,
       stack: scanned.stack,
       packageManager: scanned.packageManager,

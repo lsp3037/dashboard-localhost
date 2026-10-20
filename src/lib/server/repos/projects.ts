@@ -10,6 +10,8 @@ import type { PackageManager, ProjectKind, ProjectSource } from '@/lib/shared/ty
 export interface ProjectRow {
   id: string;
   name: string;
+  /** `package.json.name`, apenas informativo; o nome exibido é o da pasta. */
+  packageName: string | null;
   path: string;
   parentId: string | null;
   source: ProjectSource;
@@ -46,6 +48,7 @@ export interface UpsertCounters {
 export interface ManualProjectInput {
   path: string;
   name: string;
+  packageName: string | null;
   kind: ProjectKind;
   stack: readonly string[];
   packageManager: PackageManager | null;
@@ -57,6 +60,7 @@ export interface ManualProjectInput {
 interface RawProjectRow {
   id: string;
   name: string;
+  packageName: string | null;
   path: string;
   parentId: string | null;
   source: ProjectSource;
@@ -83,6 +87,7 @@ const SELECT_PROJECT = `
   SELECT
     id,
     name,
+    package_name     AS packageName,
     path,
     parent_id        AS parentId,
     source,
@@ -105,11 +110,11 @@ const SELECT_PROJECT = `
 
 const INSERT_PROJECT = `
   INSERT INTO projects (
-    id, name, path, parent_id, source, kind, hidden, missing, stack, package_manager,
+    id, name, package_name, path, parent_id, source, kind, hidden, missing, stack, package_manager,
     scripts, default_script, preferred_port, git_branch, git_head_at, notes,
     created_at, updated_at, last_scanned_at
   ) VALUES (
-    @id, @name, @path, @parentId, @source, @kind, 0, 0, @stack, @packageManager,
+    @id, @name, @packageName, @path, @parentId, @source, @kind, 0, 0, @stack, @packageManager,
     @scripts, @defaultScript, NULL, @gitBranch, @gitHeadAt, NULL,
     @now, @now, @now
   )
@@ -118,6 +123,7 @@ const INSERT_PROJECT = `
 const UPDATE_SCANNED_PROJECT = `
   UPDATE projects SET
     name            = @name,
+    package_name    = @packageName,
     parent_id       = @parentId,
     kind            = @kind,
     missing         = 0,
@@ -135,6 +141,7 @@ const UPDATE_SCANNED_PROJECT = `
 interface InsertProjectParams {
   id: string;
   name: string;
+  packageName: string | null;
   path: string;
   parentId: string | null;
   source: ProjectSource;
@@ -151,6 +158,7 @@ interface InsertProjectParams {
 interface UpdateScannedProjectParams {
   id: string;
   name: string;
+  packageName: string | null;
   parentId: string | null;
   kind: ProjectKind;
   stack: string;
@@ -186,6 +194,7 @@ function mapRow(raw: RawProjectRow): ProjectRow {
   return {
     id: raw.id,
     name: raw.name,
+    packageName: raw.packageName,
     path: raw.path,
     parentId: raw.parentId,
     source: raw.source,
@@ -283,6 +292,7 @@ export function upsertScannedProjects(projects: readonly ScannedProject[]): Upse
         insert.run({
           id: randomUUID(),
           name: project.name,
+          packageName: project.packageName,
           path: project.path,
           parentId,
           source: 'scan',
@@ -302,6 +312,7 @@ export function upsertScannedProjects(projects: readonly ScannedProject[]): Upse
       const nextName = existing.source === 'manual' ? existing.name : project.name;
       const unchanged =
         existing.kind === project.kind &&
+        existing.packageName === project.packageName &&
         existing.packageManager === project.packageManager &&
         existing.gitBranch === project.gitBranch &&
         existing.gitHeadAt === project.gitHeadAt &&
@@ -321,6 +332,7 @@ export function upsertScannedProjects(projects: readonly ScannedProject[]): Upse
       update.run({
         id: existing.id,
         name: nextName,
+        packageName: project.packageName,
         parentId,
         kind: project.kind,
         stack: JSON.stringify(project.stack),
@@ -357,6 +369,7 @@ export function insertManualProject(input: ManualProjectInput): ProjectRow {
   db.prepare<InsertProjectParams>(INSERT_PROJECT).run({
     id,
     name: input.name,
+    packageName: input.packageName,
     path: input.path,
     parentId: null,
     source: 'manual',

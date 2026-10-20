@@ -60,10 +60,22 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_one_active
   ON process_runs(project_id) WHERE ended_at IS NULL;
 `;
 
+/**
+ * v2: identidade do projeto passa a ser o nome da pasta; `package.json.name` vira
+ * metadado separado (`package_name`), exibido como informação secundária.
+ */
+const V2_ADD_PACKAGE_NAME = `
+ALTER TABLE projects ADD COLUMN package_name TEXT;
+`;
+
 const MIGRATIONS: readonly Migration[] = [
   {
     version: 1,
     statements: [V1_SCHEMA],
+  },
+  {
+    version: 2,
+    statements: [V2_ADD_PACKAGE_NAME],
   },
 ];
 

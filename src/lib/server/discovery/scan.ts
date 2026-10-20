@@ -58,32 +58,6 @@ const MAX_WORKSPACE_MATCHES = 50;
 
 const HUB_DIRECTORY = canonicalizePath(process.cwd());
 
-/** Nomes de pacote que não identificam o projeto; nesses casos usamos o nome da pasta. */
-const GENERIC_PACKAGE_NAMES: ReadonlySet<string> = new Set([
-  '',
-  'app',
-  'web',
-  'api',
-  'client',
-  'server',
-  'frontend',
-  'backend',
-  'site',
-  'docs',
-  'root',
-  'workspace',
-  'monorepo',
-  'packages',
-  'my-app',
-  'next-app',
-  'create-next-app',
-  'project',
-  'template',
-  'demo',
-  'example',
-  'test',
-]);
-
 interface DirectoryListing {
   readonly names: ReadonlySet<string>;
   readonly entries: readonly Dirent[];
@@ -204,11 +178,9 @@ export async function readPackageJson(dir: string): Promise<PackageJsonInfo | nu
   };
 }
 
-/** Nome exibido: `package.json.name` quando não é genérico; senão o nome da pasta (preserva acentos). */
-export function resolveProjectName(packageName: string | null, dir: string): string {
-  if (packageName === null) return path.basename(dir);
-  if (GENERIC_PACKAGE_NAMES.has(packageName.toLowerCase())) return path.basename(dir);
-  return packageName;
+/** Nome exibido: sempre o nome da pasta no disco (preserva acentos e espaços). */
+export function resolveProjectName(dir: string): string {
+  return path.basename(dir);
 }
 
 async function readDirectory(dir: string): Promise<DirectoryListing | null> {
@@ -382,7 +354,8 @@ async function buildProjectDraft(
 
   return {
     path: dir,
-    name: nameOverride ?? resolveProjectName(packageJson?.name ?? null, dir),
+    name: nameOverride ?? resolveProjectName(dir),
+    packageName: packageJson?.name ?? null,
     parentPath,
     kind,
     stack: packageJson === null ? [] : detectStack({ dependencies: packageJson.dependencyNames, fileNames: listing.names }),
@@ -400,6 +373,7 @@ function toScannedProject(draft: ProjectDraft): ScannedProject {
   return {
     path: draft.path,
     name: draft.name,
+    packageName: draft.packageName,
     parentPath: draft.parentPath,
     kind: draft.kind,
     stack: draft.stack,
@@ -598,6 +572,7 @@ async function handleTask(task: DirectoryTask, state: ScanState): Promise<readon
     const nonNode: ProjectDraft = {
       path: task.dir,
       name: path.basename(task.dir),
+      packageName: null,
       parentPath: null,
       kind: 'non-node',
       stack: [],

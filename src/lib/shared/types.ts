@@ -32,6 +32,7 @@ export interface RunSummaryDTO {
 export interface ProjectDTO {
   id: string;
   name: string;
+  packageName: string | null;
   path: string;
   parentId: string | null;
   kind: ProjectKind;
