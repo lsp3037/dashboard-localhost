@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# next
+.next/
+out/
+
+# data / runtime
+.data/
+
+# tests
+coverage/
+playwright-report/
+test-results/
+
+# env (keep the example)
+.env
+.env.*
+!.env.example
+
+# logs / os
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# misc
+*.tsbuildinfo
