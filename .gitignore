@@ -26,3 +26,7 @@ Thumbs.db
 
 # misc
 *.tsbuildinfo
+
+# local agent toolkit (não faz parte do app)
+.agents/
+.opencode/
