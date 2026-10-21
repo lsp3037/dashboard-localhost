@@ -1,10 +1,12 @@
 # dashboard-localhost — Hub de Projetos Local
 
+> **Status de implementação (21/10/2026):** F0–F3 concluídas e em uso. F4 (logs ao vivo/SSE) e F5 (hardening, E2E e limpeza de histórico) ainda não foram implementadas. Este documento é a especificação técnica original; o estado atual está no [README](README.md) e no [PRD](docs/PRD.md).
+
 | Campo | Valor |
 |---|---|
 | Tipo de projeto | **WEB** (full-stack Next.js, execução local) |
-| Modo | Planejamento (Fase 1) — nenhum código de aplicação nesta etapa |
-| Data | 20/10/2026 |
+| Modo | Especificação técnica original — F0–F3 implementadas; F4–F5 pendentes |
+| Data | 20/10/2026 (spec) · status em 21/10/2026 |
 | Ambiente | Windows, PowerShell 5.1, Node v24.20.0, npm 11.19.0 |
 | Raízes monitoradas | `C:\Projetos` (default) + raízes extras via `HUB_PROJECTS_ROOTS` (`;`-separado) |
 | Profundidade do scan | `2` (pega monorepos como `prenatal-saas/apps/*`) |
@@ -703,10 +705,10 @@ Nome exibido: `package.json.name` se existir e não for genérico; senão nome d
 
 ### 7.3 Cache e re-scan
 
-- O banco **é** o cache. Scan roda: no boot (assíncrono, não bloqueia o primeiro render), no botão **Escanear**, e após adicionar projeto manual.
+- O banco **é** o cache. O scan roda sob demanda (botão **Escanear** ou `POST /api/projects/scan`); não há scan automático no boot. O cadastro manual inspeciona apenas o caminho informado.
 - Sem watcher de filesystem no MVP (evita `chokidar` + custo em `C:\Projetos` com `node_modules`).
-- `last_scanned_at` exibido em Configurações; se > 10 min, header mostra "dados de X min atrás".
-- Git branch/commit são cacheados no scan (30 s de TTL em memória para o detalhe).
+- `last_scanned_at` é exibido no dashboard e em Configurações.
+- Git branch/commit são atualizados a cada scan; não há cache em memória com TTL.
 - Scan de 7 pastas em profundidade 2: meta < 2 s (sem descer em `node_modules`); timeout global de 10 s cancela e retorna o que já foi coletado.
 ---
 
@@ -1076,7 +1078,7 @@ export default { plugins: { '@tailwindcss/postcss': {} } };
 `.env.local` (não versionar; criar `.env.example`):
 
 ```ini
-HUB_PROJECTS_ROOT=C:\Projetos
+HUB_PROJECTS_ROOTS=C:\Projetos
 HUB_DATA_DIR=.data
 HUB_ALLOWED_SCRIPTS=dev,start,preview
 HUB_BOOT_TIMEOUT_MS=90000

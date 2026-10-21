@@ -109,7 +109,7 @@ export default function SettingsPage() {
         </p>
       </Section>
 
-      <Section title="Logs e stream" description="F4">
+      <Section title="Logs e stream" description="F4 pendente">
         <dl>
           <Row label="Buffer por run" env="HUB_LOG_BUFFER_LINES">
             {formatCount(config.logBufferLines)} linhas
@@ -126,13 +126,13 @@ export default function SettingsPage() {
             variant="danger"
             size="sm"
             disabled
-            title="Disponível quando o histórico de runs existir (F4)"
+            title="Disponível quando a limpeza de histórico for implementada (F4)"
             aria-describedby="clear-history-hint"
           >
             Limpar histórico de runs
           </Button>
           <span id="clear-history-hint" className="text-[11px] text-hub-text-muted">
-            Ainda não há histórico: o controle de processos chega na F3 e os logs na F4.
+            O histórico de execuções já aparece no detalhe do projeto. Logs ao vivo, SSE e limpeza de histórico ficam para a F4.
           </span>
         </div>
       </Section>
