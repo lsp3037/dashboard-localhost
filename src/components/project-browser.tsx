@@ -8,6 +8,7 @@ import type { ConfirmAction } from '@/components/confirm-dialog';
 import { EditProjectDialog } from '@/components/edit-project-dialog';
 import { EmptyState, ScanCta } from '@/components/empty-state';
 import { ProjectGrid } from '@/components/project-grid';
+import { RunMonitor } from '@/components/run-monitor';
 import { Button } from '@/components/ui/button';
 import { CloseIcon, PlusIcon, SearchIcon } from '@/components/ui/icons';
 import { ProjectGridSkeleton } from '@/components/ui/skeleton';
@@ -80,9 +81,14 @@ export function ProjectBrowser({ projects, roots, lastScanLabel, lastScanTitle }
 
   const filters: Filter[] = ['all', 'running', 'hidden'];
   const rootLabel = roots[0] ?? String.raw`C:\Projetos`;
+  const activeIds = useMemo(
+    () => projects.filter(isActiveRun).map((project) => project.id),
+    [projects],
+  );
 
   return (
     <>
+      <RunMonitor projectIds={activeIds} active={activeIds.length > 0} />
       <div className="mb-4 flex flex-col gap-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
@@ -201,7 +207,7 @@ export function ProjectBrowser({ projects, roots, lastScanLabel, lastScanTitle }
             query.trim().length > 0
               ? `Nenhum projeto tem "${query.trim()}" no nome ou no caminho.`
               : filter === 'running'
-                ? 'O controle de processos chega na F3. Até lá todo projeto aparece como parado.'
+                ? 'Nenhum projeto com processo ativo. Use Iniciar em um card para subir o dev server.'
                 : 'Use o menu ⋯ de um card para ocultá-lo. Projetos ocultos saem do grid sem apagar nada.'
           }
         >

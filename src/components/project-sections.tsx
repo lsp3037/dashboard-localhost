@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { StatusDot } from '@/components/ui/status-dot';
-import type { ProjectView } from '@/lib/shared/view-model';
+import type { ProjectView, RunView } from '@/lib/shared/view-model';
 
 function Panel({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
@@ -56,6 +56,11 @@ export function FactGrid({ project }: { project: ProjectView }) {
 }
 
 export function StatusPanel({ project }: { project: ProjectView }) {
+  const run = project.run;
+  const last = project.lastRun;
+  const errorCode = run?.errorCode ?? last?.errorCode ?? null;
+  const exitCode = last?.exitCode ?? null;
+
   return (
     <Panel title="Status" description="processo">
       <dl className="divide-y divide-hub-border">
@@ -65,15 +70,42 @@ export function StatusPanel({ project }: { project: ProjectView }) {
             <StatusDot tone={project.statusTone} label={project.statusLabel} />
           </dd>
         </div>
-        <Row label="PID">{'—'}</Row>
-        <Row label="Porta">{'—'}</Row>
-        <Row label="Uptime">{'—'}</Row>
-        <Row label="Script padrão">{project.defaultScript ?? 'nenhum'}</Row>
-        <Row label="Run ativo">{'nenhum'}</Row>
+        <Row label="PID">{run?.pid ?? '—'}</Row>
+        <Row label="Porta">
+          {run?.port !== null && run?.port !== undefined ? (
+            <a
+              href={`http://localhost:${String(run.port)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-sm hover:text-hub-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hub-accent"
+            >
+              localhost:{run.port}
+            </a>
+          ) : (
+            (project.preferredPort ?? '—')
+          )}
+        </Row>
+        <Row label="Uptime">{project.uptimeLabel ?? '—'}</Row>
+        <Row label="Script">{run?.script ?? project.defaultScript ?? 'nenhum'}</Row>
+        <Row label="Run ativo">
+          {run === null ? 'nenhum' : `${run.id.slice(0, 8)} · ${run.status}`}
+        </Row>
       </dl>
-      <p className="border-t border-hub-border px-3 py-2 text-[11px] leading-4 text-hub-text-muted">
-        PID, porta e uptime passam a ser preenchidos quando o controle de processos entrar na F3. Nada aqui é simulado.
-      </p>
+
+      {errorCode !== null && (
+        <p className="border-t border-hub-border px-3 py-2 font-mono text-[11px] leading-4 text-status-error">
+          {errorCode}
+          {exitCode !== null ? ` · exit ${String(exitCode)}` : ''}
+        </p>
+      )}
+
+      {run === null && (
+        <p className="border-t border-hub-border px-3 py-2 text-[11px] leading-4 text-hub-text-muted">
+          {last === null
+            ? 'Nenhuma execução registrada neste projeto.'
+            : `Último run: ${last.status}${last.exitCode !== null && last.exitCode !== undefined ? ` (exit ${String(last.exitCode)})` : ''}.`}
+        </p>
+      )}
     </Panel>
   );
 }
@@ -111,16 +143,38 @@ export function ScriptsPanel({ project }: { project: ProjectView }) {
   );
 }
 
-export function RunHistoryPanel() {
+export function RunHistoryPanel({ runs }: { runs: RunView[] }) {
   return (
     <Panel title="Últimos runs" description="10 mais recentes">
-      <div className="px-3 py-6">
-        <p className="text-[12px] font-medium text-hub-text">Nenhuma execução registrada</p>
-        <p className="mt-1 max-w-prose text-[11px] leading-4 text-hub-text-muted">
-          O histórico aparece aqui quando o controle de processos (F3) e os logs (F4) estiverem ativos. O hub ainda não
-          inicia nada.
-        </p>
-      </div>
+      {runs.length === 0 ? (
+        <div className="px-3 py-6">
+          <p className="text-[12px] font-medium text-hub-text">Nenhuma execução registrada</p>
+          <p className="mt-1 max-w-prose text-[11px] leading-4 text-hub-text-muted">
+            Use Iniciar neste projeto. Cada execução guarda script, PID, porta e o desfecho do processo.
+          </p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-hub-border">
+          {runs.map((run) => (
+            <li key={run.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2">
+              <StatusDot tone={run.statusTone} label={run.statusLabel} />
+              <code className="font-mono text-[12px] text-hub-text">{run.script}</code>
+              <span className="font-mono text-[11px] text-hub-text-muted">
+                {run.port !== null ? `localhost:${String(run.port)}` : 'porta —'}
+              </span>
+              <span className="ml-auto font-mono text-[10px] tabular-nums text-hub-text-muted">
+                {run.startedAtLabel ?? '—'}
+                {run.durationLabel !== null ? ` · ${run.durationLabel}` : ''}
+              </span>
+              {(run.errorCode !== null || run.exitCode !== null) && (
+                <span className="w-full font-mono text-[10px] text-hub-text-muted/80">
+                  {run.errorCode ?? `exit ${String(run.exitCode)}`}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </Panel>
   );
 }

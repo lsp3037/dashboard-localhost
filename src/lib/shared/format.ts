@@ -72,6 +72,24 @@ export function formatDurationMs(ms: number): string {
   return `${numberFormatter.format(Math.round(ms / 60_000))} min`;
 }
 
+/** Uptime de um run: "42 s", "3 min", "1 h 12 min" — `null` se a data de início for inválida. */
+export function formatElapsed(startIso: string | null, endIso: string | null, now: number = Date.now()): string | null {
+  if (startIso === null) return null;
+
+  const start = Date.parse(startIso);
+  if (Number.isNaN(start)) return null;
+
+  const end = endIso === null ? now : Date.parse(endIso);
+  if (Number.isNaN(end)) return null;
+
+  const elapsed = Math.max(0, end - start);
+  if (elapsed < HOUR) return formatDurationMs(elapsed);
+
+  const hours = Math.floor(elapsed / HOUR);
+  const minutes = Math.round((elapsed % HOUR) / MINUTE);
+  return minutes === 0 ? `${formatCount(hours)} h` : `${formatCount(hours)} h ${formatCount(minutes)} min`;
+}
+
 /**
  * Encurta no meio preservando o começo (raiz) e o fim (nome da pasta):
  * `C:\Projetos\prenatal-saas\apps\web` → `C:\Projetos\prena…\apps\web`.

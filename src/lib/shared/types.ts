@@ -19,14 +19,35 @@ export type StackTag =
   | 'typescript'
   | 'test';
 
-/** Resumo de run exposto na API. Preenchido a partir de F3. */
+export type RunStatus = 'starting' | 'running' | 'stopping' | 'stopped' | 'crashed' | 'failed';
+
+/** Run completo exposto por `/start`, `/stop` e `/status` (§4.3). */
+export interface RunDTO {
+  id: string;
+  projectId: string;
+  script: string;
+  /** Comando gerado internamente (auditoria); nunca vem do cliente. */
+  command: string;
+  status: RunStatus;
+  pid: number | null;
+  port: number | null;
+  startedAt: string;
+  endedAt: string | null;
+  exitCode: number | null;
+  errorCode: string | null;
+}
+
+/** Resumo de run embutido no `ProjectDTO`. */
 export interface RunSummaryDTO {
   id: string;
+  script?: string;
   status: string;
   port: number | null;
   pid?: number | null;
   startedAt: string;
   endedAt?: string | null;
+  exitCode?: number | null;
+  errorCode?: string | null;
 }
 
 export interface ProjectDTO {

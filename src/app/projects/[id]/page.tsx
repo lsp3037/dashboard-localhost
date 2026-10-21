@@ -5,14 +5,13 @@ import { notFound } from 'next/navigation';
 import { CopyPathButton } from '@/components/copy-path-button';
 import { ProjectActions } from '@/components/project-actions';
 import { FactGrid, RunHistoryPanel, ScriptsPanel, StatusPanel } from '@/components/project-sections';
+import { RunMonitor } from '@/components/run-monitor';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeftIcon } from '@/components/ui/icons';
 import { StackBadges } from '@/components/ui/stack-badges';
 import { StatusDot } from '@/components/ui/status-dot';
-import { getConfig } from '@/lib/server/config';
-import { toProjectDto } from '@/lib/server/dto';
+import { loadProjectDetail } from '@/lib/server/overview';
 import { getProject } from '@/lib/server/repos/projects';
-import { toProjectView } from '@/lib/shared/view-model';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,17 +28,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProjectDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const row = getProject(id);
+  const snapshot = loadProjectDetail(id);
 
-  if (row === null) {
+  if (snapshot === null) {
     notFound();
   }
 
-  const config = getConfig();
-  const project = toProjectView(toProjectDto(row, config.allowedScripts));
+  const { project, runs } = snapshot;
+  const active = project.run !== null;
 
   return (
     <div className="flex flex-col gap-4">
+      <RunMonitor projectIds={active ? [project.id] : []} active={active} />
       <nav aria-label="Trilha de navegação" className="flex flex-wrap items-center gap-2 text-[11px] text-hub-text-muted">
         <Link
           href="/"
@@ -96,7 +96,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         <ScriptsPanel project={project} />
       </div>
 
-      <RunHistoryPanel />
+      <RunHistoryPanel runs={runs} />
 
       {project.notes !== null && project.notes.length > 0 && (
         <section className="border border-hub-border bg-hub-surface">

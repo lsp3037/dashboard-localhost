@@ -1,5 +1,5 @@
-import { formatDateTime, formatRelativeTime, latestIso, truncateMiddle } from '@/lib/shared/format';
-import type { ProjectDTO } from '@/lib/shared/types';
+import { formatDateTime, formatElapsed, formatRelativeTime, latestIso, truncateMiddle } from '@/lib/shared/format';
+import type { ProjectDTO, RunStatus } from '@/lib/shared/types';
 
 export type StatusTone = 'idle' | 'starting' | 'running' | 'error' | 'blocked';
 
@@ -55,6 +55,10 @@ function resolveStatus(project: ProjectDTO): ProjectStatus {
       break;
   }
 
+  // Sem run ativo, o card ainda mostra o desfecho do último run (caiu/falhou).
+  if (project.lastRun?.status === 'crashed') return 'crashed';
+  if (project.lastRun?.status === 'failed') return 'failed';
+
   return project.hidden ? 'hidden' : 'stopped';
 }
 
@@ -71,6 +75,8 @@ export interface ProjectView extends ProjectDTO {
   readonly searchText: string;
   /** Porta exibida no card: a do run (F3) ou a preferida declarada; nunca inventada. */
   readonly cardPort: number | null;
+  /** Uptime do run ativo ("3 min"); `null` quando parado. */
+  readonly uptimeLabel: string | null;
 }
 
 export function toProjectView(project: ProjectDTO, now: number = Date.now()): ProjectView {
@@ -93,5 +99,41 @@ export function toProjectView(project: ProjectDTO, now: number = Date.now()): Pr
     shortPath: truncateMiddle(project.path, 44),
     searchText: `${project.name} ${project.packageName ?? ''} ${project.path}`.toLowerCase(),
     cardPort: project.run?.port ?? project.preferredPort,
+    uptimeLabel:
+      project.run === null ? null : formatElapsed(project.run.startedAt, project.run.endedAt ?? null, now),
+  };
+}
+
+/** Linha mínima de `process_runs` necessária para render (sem importar tipos de servidor). */
+export interface RunRecord {
+  readonly id: string;
+  readonly script: string;
+  readonly status: RunStatus;
+  readonly port: number | null;
+  readonly pid: number | null;
+  readonly startedAt: string;
+  readonly endedAt: string | null;
+  readonly exitCode: number | null;
+  readonly errorCode: string | null;
+}
+
+export interface RunView extends RunRecord {
+  readonly statusLabel: string;
+  readonly statusTone: StatusTone;
+  readonly startedAtLabel: string | null;
+  readonly endedAtLabel: string | null;
+  readonly durationLabel: string | null;
+}
+
+export function toRunView(run: RunRecord, now: number = Date.now()): RunView {
+  const meta = statusMeta(run.status);
+
+  return {
+    ...run,
+    statusLabel: meta.label,
+    statusTone: meta.tone,
+    startedAtLabel: formatDateTime(run.startedAt),
+    endedAtLabel: formatDateTime(run.endedAt),
+    durationLabel: formatElapsed(run.startedAt, run.endedAt, now),
   };
 }

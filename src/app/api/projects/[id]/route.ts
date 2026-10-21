@@ -1,8 +1,11 @@
 import { getConfig } from '@/lib/server/config';
-import { toProjectDto } from '@/lib/server/dto';
-import { notFound, scriptNotAllowed } from '@/lib/server/errors';
+import { attachRuns, toProjectDto } from '@/lib/server/dto';
+import { notFound, projectRunning, scriptNotAllowed } from '@/lib/server/errors';
 import { jsonError, jsonOk, noContent, parseJsonBody } from '@/lib/server/http';
 import { deleteProject, getProject, hideProject, updateProject } from '@/lib/server/repos/projects';
+import type { ProjectRow } from '@/lib/server/repos/projects';
+import { getActiveRun, getLastFinishedRun } from '@/lib/server/repos/runs';
+import type { ProjectDTO } from '@/lib/shared/types';
 import { updateProjectSchema } from '@/lib/validation/project';
 
 export const runtime = 'nodejs';
@@ -10,6 +13,16 @@ export const dynamic = 'force-dynamic';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
+}
+
+function projectPayload(id: string, row: ProjectRow): { project: ProjectDTO } {
+  return {
+    project: attachRuns(
+      toProjectDto(row, getConfig().allowedScripts),
+      getActiveRun(id),
+      getLastFinishedRun(id),
+    ),
+  };
 }
 
 export async function PATCH(request: Request, context: RouteContext): Promise<Response> {
@@ -36,7 +49,7 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
 
     const updated = updateProject(id, body);
 
-    return jsonOk({ project: toProjectDto(updated, getConfig().allowedScripts) });
+    return jsonOk(projectPayload(id, updated));
   } catch (error) {
     return jsonError(error);
   }
@@ -48,6 +61,10 @@ export async function DELETE(request: Request, context: RouteContext): Promise<R
     const hard = new URL(request.url).searchParams.get('hard') === '1';
 
     if (hard) {
+      if (getActiveRun(id) !== null) {
+        throw projectRunning(`Projeto ${id} tem execução ativa; pare antes de remover.`, { id });
+      }
+
       const removed = deleteProject(id);
 
       if (removed === null) {
@@ -59,7 +76,7 @@ export async function DELETE(request: Request, context: RouteContext): Promise<R
 
     const hidden = hideProject(id);
 
-    return jsonOk({ project: toProjectDto(hidden, getConfig().allowedScripts) });
+    return jsonOk(projectPayload(id, hidden));
   } catch (error) {
     return jsonError(error);
   }

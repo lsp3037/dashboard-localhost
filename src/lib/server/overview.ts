@@ -2,11 +2,13 @@ import 'server-only';
 
 import { getConfig } from '@/lib/server/config';
 import type { HubConfig } from '@/lib/server/config';
-import { toProjectDto } from '@/lib/server/dto';
-import { listProjects } from '@/lib/server/repos/projects';
+import { toProjectDto, attachRuns } from '@/lib/server/dto';
+import { getProject, listProjects } from '@/lib/server/repos/projects';
+import { getActiveRun, getLastFinishedRun, getRunSummaries, listRuns } from '@/lib/server/repos/runs';
+import type { ProjectRow } from '@/lib/server/repos/projects';
 import { formatDateTime, formatRelativeTime, latestIso } from '@/lib/shared/format';
-import { toProjectView } from '@/lib/shared/view-model';
-import type { ProjectView } from '@/lib/shared/view-model';
+import { toProjectView, toRunView } from '@/lib/shared/view-model';
+import type { ProjectView, RunView } from '@/lib/shared/view-model';
 
 /**
  * Leituras de tela prontas para render. Ficam fora dos componentes porque
@@ -26,13 +28,47 @@ export function loadInventory(): InventorySnapshot {
   const rows = listProjects({ includeHidden: true });
   const now = Date.now();
   const lastScannedAt = latestIso(rows.map((row) => row.lastScannedAt));
+  const { active, last } = getRunSummaries();
+
+  const projects = rows.map((row) => {
+    const dto = attachRuns(
+      toProjectDto(row, config.allowedScripts),
+      active.get(row.id) ?? null,
+      last.get(row.id) ?? null,
+    );
+
+    return toProjectView(dto, now);
+  });
 
   return {
-    projects: rows.map((row) => toProjectView(toProjectDto(row, config.allowedScripts), now)),
+    projects,
     roots: config.projectsRoots,
     lastScannedAt,
     lastScanLabel: formatRelativeTime(lastScannedAt, now),
     lastScanTitle: formatDateTime(lastScannedAt),
+  };
+}
+
+export interface ProjectDetailSnapshot {
+  readonly project: ProjectView;
+  readonly runs: RunView[];
+}
+
+/** Detalhe lê o run ativo direto do banco: sem side effects no render (adoção é do `/status`). */
+export function loadProjectDetail(id: string): ProjectDetailSnapshot | null {
+  const row = getProject(id);
+  if (row === null) return null;
+
+  return buildProjectDetail(row, Date.now());
+}
+
+function buildProjectDetail(row: ProjectRow, now: number): ProjectDetailSnapshot {
+  const config = getConfig();
+  const dto = attachRuns(toProjectDto(row, config.allowedScripts), getActiveRun(row.id), getLastFinishedRun(row.id));
+
+  return {
+    project: toProjectView(dto, now),
+    runs: listRuns(row.id, 10).map((run) => toRunView(run, now)),
   };
 }
 

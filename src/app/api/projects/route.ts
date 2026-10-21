@@ -3,10 +3,11 @@ import fs from 'node:fs/promises';
 import { getConfig } from '@/lib/server/config';
 import { resolveAllowedPath } from '@/lib/server/discovery/paths';
 import { inspectProjectPath } from '@/lib/server/discovery/scan';
-import { toProjectDto } from '@/lib/server/dto';
+import { attachRuns, toProjectDto } from '@/lib/server/dto';
 import { alreadyExists, invalidBody, notAProject, notFound } from '@/lib/server/errors';
 import { jsonError, jsonOk, parseJsonBody } from '@/lib/server/http';
 import { findProjectByPath, insertManualProject, listProjects } from '@/lib/server/repos/projects';
+import { getRunSummaries } from '@/lib/server/repos/runs';
 import { createProjectSchema } from '@/lib/validation/project';
 
 export const runtime = 'nodejs';
@@ -15,7 +16,15 @@ export const dynamic = 'force-dynamic';
 export async function GET(): Promise<Response> {
   try {
     const { allowedScripts } = getConfig();
-    const projects = listProjects({ includeHidden: true }).map((project) => toProjectDto(project, allowedScripts));
+    const { active, last } = getRunSummaries();
+
+    const projects = listProjects({ includeHidden: true }).map((project) =>
+      attachRuns(
+        toProjectDto(project, allowedScripts),
+        active.get(project.id) ?? null,
+        last.get(project.id) ?? null,
+      ),
+    );
 
     return jsonOk({ projects });
   } catch (error) {

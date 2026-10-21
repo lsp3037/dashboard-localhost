@@ -3,20 +3,18 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
+import { StartStopButton } from '@/components/start-stop-button';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   ChevronDownIcon,
   EyeIcon,
   EyeOffIcon,
   MoreIcon,
   PencilIcon,
-  PlayIcon,
   TrashIcon,
 } from '@/components/ui/icons';
 import { StackBadges } from '@/components/ui/stack-badges';
 import { StatusDot } from '@/components/ui/status-dot';
-import { Tooltip } from '@/components/ui/tooltip';
 import type { ProjectView } from '@/lib/shared/view-model';
 
 interface ProjectCardProps {
@@ -30,28 +28,6 @@ interface ProjectCardProps {
 const MENU_ITEM_CLASS =
   'flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12px] text-hub-text ' +
   'hover:bg-hub-surface focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-hub-accent';
-
-function StartButton({ project }: { project: ProjectView }) {
-  const reason =
-    project.runnableScripts.length === 0
-      ? 'Nenhum script dev/start/preview no package.json'
-      : 'Controle de processos chega na F3';
-
-  return (
-    <Tooltip label={reason}>
-      <Button
-        size="sm"
-        variant="secondary"
-        disabled
-        aria-label={`Iniciar ${project.name} — ${reason}`}
-        data-script={project.defaultScript ?? undefined}
-      >
-        <PlayIcon width={12} height={12} />
-        Iniciar
-      </Button>
-    </Tooltip>
-  );
-}
 
 interface CardMenuProps {
   project: ProjectView;
@@ -224,7 +200,7 @@ export function ProjectCard({ project, index = 0, onEdit, onToggleHidden, onRemo
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
-          <StartButton project={project} />
+          <StartStopButton project={project} />
           <CardMenu project={project} onEdit={onEdit} onToggleHidden={onToggleHidden} onRemove={onRemove} />
         </div>
       </div>
@@ -236,12 +212,31 @@ export function ProjectCard({ project, index = 0, onEdit, onToggleHidden, onRemo
           {project.gitBranch ?? 'sem git'}
         </span>
         <Separator />
-        <span title={project.cardPort !== null ? 'Porta preferida (o run real chega na F3)' : 'Porta desconhecida'}>
-          porta {project.cardPort ?? '—'}
-        </span>
+        {project.run?.port !== null && project.run?.port !== undefined ? (
+          <a
+            href={`http://localhost:${String(project.run.port)}`}
+            target="_blank"
+            rel="noreferrer"
+            title={`Abrir http://localhost:${String(project.run.port)}`}
+            className="rounded-sm hover:text-hub-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hub-accent"
+          >
+            porta {project.run.port}
+          </a>
+        ) : (
+          <span title={project.cardPort !== null ? 'Porta preferida (run ainda não detectado)' : 'Porta desconhecida'}>
+            porta {project.cardPort ?? '—'}
+          </span>
+        )}
         <Separator />
-        <span title={project.lastActivityTitle ?? 'Sem atividade registrada'}>
-          {project.lastActivityLabel ?? 'sem atividade'}
+        <span
+          title={
+            project.uptimeLabel !== null
+              ? 'Uptime do run ativo'
+              : (project.lastActivityTitle ?? 'Sem atividade registrada')
+          }
+          aria-live="polite"
+        >
+          {project.uptimeLabel !== null ? `rodando há ${project.uptimeLabel}` : (project.lastActivityLabel ?? 'sem atividade')}
         </span>
       </div>
 

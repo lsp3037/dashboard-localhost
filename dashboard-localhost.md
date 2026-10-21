@@ -852,15 +852,28 @@ Ordem obrigatória: **F0 → F1 → F2 → F3 → F4 → F5**. F2 depende de F1;
 | 3.7 | Revisão de segurança da seção 6 (checklist assinado) | security-auditor / @vulnerability-scanner | 3.6 |
 
 **Aceite F3**
-- [ ] Iniciar `demo-node` → `status: running`, porta detectada, PID registrado, listener na porta.
-- [ ] Parar → nenhum listener na porta e nenhum processo remanescente (`Get-CimInstance Win32_Process` filtrado).
+- [x] Iniciar `demo-node` → `status: running`, porta detectada, PID registrado, listener na porta.
+- [x] Parar → nenhum listener na porta e nenhum processo remanescente (`Get-CimInstance Win32_Process` filtrado).
 - [ ] Iniciar `trustcare` → porta 3000 detectada e log inicial capturado; se 3000 estiver ocupada, 409 informativo (sem troca automática de porta).
-- [ ] Iniciar `prenatal-saas` → 422 `NO_SCRIPT`; botão desabilitado na UI.
-- [ ] Segundo `start` no mesmo projeto → 409 `ALREADY_RUNNING`.
-- [ ] Listener decoy em porta alvo → 409 `PORT_IN_USE`, decoy **continua vivo**.
+- [x] Iniciar `prenatal-saas` → 422 `NO_SCRIPT`; botão desabilitado na UI. _(validado com fixture `demo-nonrun`)_
+- [x] Segundo `start` no mesmo projeto → 409 `ALREADY_RUNNING`.
+- [x] Listener decoy em porta alvo → 409 `PORT_IN_USE`, decoy **continua vivo**.
 - [ ] `Ctrl+C` no hub com 2 runs ativas → 0 listeners órfãos.
-- [ ] Matar o hub com `Stop-Process -Force` e reabrir → runs antigas viram `crashed`, nada é morto no boot.
-- [ ] `start` com body `{"script":"dev && calc"}` → 422, nenhum processo criado.
+- [x] Matar o hub com `Stop-Process -Force` e reabrir → runs antigas viram `crashed`, nada é morto no boot.
+- [x] `start` com body `{"script":"dev && calc"}` → 422, nenhum processo criado.
+
+> Verificado em 21/10/2026 com fixture isolada (`demo-node` em 4321 + `demo-nonrun`, `HUB_PROJECTS_ROOTS` temporário). Falta validar `trustcare` real e o shutdown por `Ctrl+C`.
+
+**Checklist de segurança F3 (§6.2)**
+- [x] C1 — `resolveAllowedPath` roda antes do spawn (403 `PATH_NOT_ALLOWED`).
+- [x] C2 — script validado por regex + allowlist + existência no `package.json` (422).
+- [x] C3 — API só aceita `{ script }`; nenhum comando/argumento vem do cliente.
+- [x] C4 — `spawn` com `shell: false`; template fixo `cmd.exe /d /s /c <runner> run <script>`.
+- [x] C5 — lock em memória por projeto + índice único parcial `idx_runs_one_active`.
+- [x] C6 — kill só na árvore (`taskkill /T /F`) após validar `CreationDate`; PID reciclado aborta.
+- [x] C7 — pré-checagem de porta; listener externo gera 409 e permanece vivo (decoy testado).
+- [x] C8 — `SIGINT`/`SIGTERM`/`exit` → kill síncrono; boot reconcilia sem matar (`ORPHAN_RECONCILED`).
+- [x] C9 — `buildChildEnv` remove `PORT`/`NODE_OPTIONS`/`NEXT_RUNTIME`/`__NEXT_PRIVATE_*`; DTO não expõe env.
 
 ### F4 — Logs e streaming
 
