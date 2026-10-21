@@ -19,6 +19,7 @@ import {
 import { detectStack } from '@/lib/server/discovery/stack';
 import type { ScannedProject } from '@/lib/server/discovery/types';
 import { pathNotAllowed } from '@/lib/server/errors';
+import { parseScriptPort } from '@/lib/server/process/ports';
 import { listProjects, markMissing, upsertScannedProjects } from '@/lib/server/repos/projects';
 import type { PackageManager, ProjectKind } from '@/lib/shared/types';
 
@@ -43,6 +44,8 @@ export interface ScanResult {
 export interface PackageJsonInfo {
   readonly name: string | null;
   readonly scripts: readonly string[];
+  /** Primeira porta declarada em `dev`/`start`/`preview`, ou em qualquer script. */
+  readonly declaredPort: number | null;
   readonly dependencyNames: readonly string[];
   readonly workspacePatterns: readonly string[];
 }
@@ -56,7 +59,7 @@ const FS_CONCURRENCY = 8;
 const GIT_CONCURRENCY = 2;
 const MAX_WORKSPACE_MATCHES = 50;
 
-const HUB_DIRECTORY = canonicalizePath(process.cwd());
+const PORT_SCRIPT_PREFERENCE: readonly string[] = ['dev', 'start', 'preview'];
 
 interface DirectoryListing {
   readonly names: ReadonlySet<string>;
@@ -83,11 +86,6 @@ interface ScanState {
   readonly visited: Set<string>;
   readonly drafts: Map<string, ProjectDraft>;
   skipped: number;
-}
-
-/** `realpath` do hub: ele nunca aparece na listagem (não se gerencia). */
-function isHubDirectory(dir: string): boolean {
-  return comparisonKey(path.resolve(dir)) === comparisonKey(HUB_DIRECTORY);
 }
 
 function decodeUtf8(buffer: Buffer): string {
@@ -144,6 +142,26 @@ function readDependencyNames(record: Record<string, unknown>): string[] {
   ];
 }
 
+/** Porta fixada no comando do script; prefere `dev` → `start` → `preview`. */
+function readDeclaredPort(scripts: Record<string, unknown>): number | null {
+  for (const scriptName of PORT_SCRIPT_PREFERENCE) {
+    const command = scripts[scriptName];
+    if (typeof command !== 'string') continue;
+
+    const port = parseScriptPort(command);
+    if (port !== null) return port;
+  }
+
+  for (const command of Object.values(scripts)) {
+    if (typeof command !== 'string') continue;
+
+    const port = parseScriptPort(command);
+    if (port !== null) return port;
+  }
+
+  return null;
+}
+
 /**
  * Lê o package.json tolerando BOM e JSON inválido.
  * `null` significa "não é um projeto Node legível" (inexistente ou inválido).
@@ -169,10 +187,12 @@ export async function readPackageJson(dir: string): Promise<PackageJsonInfo | nu
 
   const record = parsed as Record<string, unknown>;
   const name = typeof record.name === 'string' && record.name.trim().length > 0 ? record.name.trim() : null;
+  const scriptsRecord = asRecord(record.scripts);
 
   return {
     name,
-    scripts: Object.keys(asRecord(record.scripts)),
+    scripts: Object.keys(scriptsRecord),
+    declaredPort: readDeclaredPort(scriptsRecord),
     dependencyNames: readDependencyNames(record),
     workspacePatterns: readWorkspacePatternsFromManifest(record),
   };
@@ -328,7 +348,6 @@ function listChildDirectories(dir: string, listing: DirectoryListing): string[] 
     if (shouldSkipEntry(entry)) continue;
 
     const childPath = path.join(dir, entry.name);
-    if (isHubDirectory(childPath)) continue;
 
     children.push(childPath);
   }
@@ -361,6 +380,7 @@ async function buildProjectDraft(
     stack: packageJson === null ? [] : detectStack({ dependencies: packageJson.dependencyNames, fileNames: listing.names }),
     packageManager,
     scripts: packageJson?.scripts ?? [],
+    preferredPort: packageJson?.declaredPort ?? null,
     gitBranch: null,
     gitHeadAt: null,
     hasGit,
@@ -379,6 +399,7 @@ function toScannedProject(draft: ProjectDraft): ScannedProject {
     stack: draft.stack,
     packageManager: draft.packageManager,
     scripts: draft.scripts,
+    preferredPort: draft.preferredPort,
     gitBranch: draft.gitBranch,
     gitHeadAt: draft.gitHeadAt,
   };
@@ -509,7 +530,6 @@ async function expandWorkspacePatterns(
 
       seen.add(key);
 
-      if (isHubDirectory(candidate)) continue;
       if (isSkippedDirName(path.basename(candidate))) continue;
       if (!isInsideRoots(candidate, state.roots)) continue;
       if (!(await isDirectory(candidate))) continue;
@@ -529,8 +549,6 @@ async function handleTask(task: DirectoryTask, state: ScanState): Promise<readon
   const key = comparisonKey(task.dir);
   if (state.visited.has(key)) return [];
   state.visited.add(key);
-
-  if (isHubDirectory(task.dir)) return [];
 
   const listing = await readDirectory(task.dir);
 
@@ -578,6 +596,7 @@ async function handleTask(task: DirectoryTask, state: ScanState): Promise<readon
       stack: [],
       packageManager: null,
       scripts: [],
+      preferredPort: null,
       gitBranch: null,
       gitHeadAt: null,
       hasGit: false,

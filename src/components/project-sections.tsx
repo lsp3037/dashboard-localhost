@@ -35,8 +35,21 @@ export function FactGrid({ project }: { project: ProjectView }) {
         </dd>
       </div>
       <div className="bg-hub-surface px-3 py-2">
-        <dt className="text-[10px] uppercase tracking-[0.1em] text-hub-text-muted">Porta preferida</dt>
-        <dd className="mt-0.5 font-mono text-[12px] text-hub-text">{project.preferredPort ?? '—'}</dd>
+        <dt className="text-[10px] uppercase tracking-[0.1em] text-hub-text-muted">Porta</dt>
+        <dd className="mt-0.5 truncate font-mono text-[12px] text-hub-text">
+          {project.cardPort !== null ? (
+            <a
+              href={`http://localhost:${String(project.cardPort)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-sm hover:text-hub-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hub-accent"
+            >
+              http://localhost:{project.cardPort}
+            </a>
+          ) : (
+            '—'
+          )}
+        </dd>
       </div>
       <div className="bg-hub-surface px-3 py-2">
         <dt className="text-[10px] uppercase tracking-[0.1em] text-hub-text-muted">Package manager</dt>
@@ -72,17 +85,17 @@ export function StatusPanel({ project }: { project: ProjectView }) {
         </div>
         <Row label="PID">{run?.pid ?? '—'}</Row>
         <Row label="Porta">
-          {run?.port !== null && run?.port !== undefined ? (
+          {project.cardPort !== null ? (
             <a
-              href={`http://localhost:${String(run.port)}`}
+              href={`http://localhost:${String(project.cardPort)}`}
               target="_blank"
               rel="noreferrer"
               className="rounded-sm hover:text-hub-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hub-accent"
             >
-              localhost:{run.port}
+              http://localhost:{project.cardPort}
             </a>
           ) : (
-            (project.preferredPort ?? '—')
+            '—'
           )}
         </Row>
         <Row label="Uptime">{project.uptimeLabel ?? '—'}</Row>
@@ -92,6 +105,12 @@ export function StatusPanel({ project }: { project: ProjectView }) {
         </Row>
       </dl>
 
+      {project.isHub && (
+        <p className="border-t border-hub-border px-3 py-2 text-[11px] leading-4 text-hub-text-muted">
+          Este é o próprio hub. Ele aparece no inventário como referência e não pode ser iniciado nem parado por si mesmo.
+        </p>
+      )}
+
       {errorCode !== null && (
         <p className="border-t border-hub-border px-3 py-2 font-mono text-[11px] leading-4 text-status-error">
           {errorCode}
@@ -99,7 +118,7 @@ export function StatusPanel({ project }: { project: ProjectView }) {
         </p>
       )}
 
-      {run === null && (
+      {run === null && !project.isHub && (
         <p className="border-t border-hub-border px-3 py-2 text-[11px] leading-4 text-hub-text-muted">
           {last === null
             ? 'Nenhuma execução registrada neste projeto.'

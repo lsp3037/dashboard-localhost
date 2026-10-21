@@ -179,6 +179,7 @@ export function ProjectCard({ project, index = 0, onEdit, onToggleHidden, onRemo
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <StatusDot tone={project.statusTone} label={project.statusLabel} />
+            {project.isHub && <Badge tone="accent">hub</Badge>}
             {project.hidden && <Badge tone="warn">oculto</Badge>}
             {project.missing && <Badge tone="error">pasta não encontrada</Badge>}
           </div>
@@ -212,31 +213,35 @@ export function ProjectCard({ project, index = 0, onEdit, onToggleHidden, onRemo
           {project.gitBranch ?? 'sem git'}
         </span>
         <Separator />
-        {project.run?.port !== null && project.run?.port !== undefined ? (
+        {project.cardPort !== null ? (
           <a
-            href={`http://localhost:${String(project.run.port)}`}
+            href={`http://localhost:${String(project.cardPort)}`}
             target="_blank"
             rel="noreferrer"
-            title={`Abrir http://localhost:${String(project.run.port)}`}
+            title={`Abrir http://localhost:${String(project.cardPort)}`}
             className="rounded-sm hover:text-hub-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hub-accent"
           >
-            porta {project.run.port}
+            http://localhost:{project.cardPort}
           </a>
         ) : (
-          <span title={project.cardPort !== null ? 'Porta preferida (run ainda não detectado)' : 'Porta desconhecida'}>
-            porta {project.cardPort ?? '—'}
-          </span>
+          <span title="Porta desconhecida até o primeiro run">porta —</span>
         )}
         <Separator />
         <span
           title={
-            project.uptimeLabel !== null
-              ? 'Uptime do run ativo'
-              : (project.lastActivityTitle ?? 'Sem atividade registrada')
+            project.isHub
+              ? 'Processo do próprio hub'
+              : project.uptimeLabel !== null
+                ? 'Uptime do run ativo'
+                : (project.lastActivityTitle ?? 'Sem atividade registrada')
           }
           aria-live="polite"
         >
-          {project.uptimeLabel !== null ? `rodando há ${project.uptimeLabel}` : (project.lastActivityLabel ?? 'sem atividade')}
+          {project.isHub
+            ? 'processo do hub'
+            : project.uptimeLabel !== null
+              ? `rodando há ${project.uptimeLabel}`
+              : (project.lastActivityLabel ?? 'sem atividade')}
         </span>
       </div>
 

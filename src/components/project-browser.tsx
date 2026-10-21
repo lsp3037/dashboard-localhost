@@ -27,8 +27,7 @@ interface ProjectBrowserProps {
 }
 
 function isActiveRun(project: ProjectView): boolean {
-  const status = project.run?.status;
-  return status === 'starting' || status === 'running' || status === 'stopping';
+  return project.status === 'starting' || project.status === 'running' || project.status === 'stopping';
 }
 
 export function ProjectBrowser({ projects, roots, lastScanLabel, lastScanTitle }: ProjectBrowserProps) {
@@ -82,7 +81,8 @@ export function ProjectBrowser({ projects, roots, lastScanLabel, lastScanTitle }
   const filters: Filter[] = ['all', 'running', 'hidden'];
   const rootLabel = roots[0] ?? String.raw`C:\Projetos`;
   const activeIds = useMemo(
-    () => projects.filter(isActiveRun).map((project) => project.id),
+    // O hub está sempre rodando, mas não tem run gerenciado para o polling consultar.
+    () => projects.filter((project) => isActiveRun(project) && !project.isHub).map((project) => project.id),
     [projects],
   );
 

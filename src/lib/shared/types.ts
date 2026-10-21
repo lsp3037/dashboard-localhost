@@ -56,6 +56,8 @@ export interface ProjectDTO {
   packageName: string | null;
   path: string;
   parentId: string | null;
+  /** `true` para o próprio hub: sempre rodando, mas não iniciável por si mesmo. */
+  isHub: boolean;
   kind: ProjectKind;
   hidden: boolean;
   missing: boolean;

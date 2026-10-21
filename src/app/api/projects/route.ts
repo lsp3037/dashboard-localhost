@@ -67,6 +67,7 @@ export async function POST(request: Request): Promise<Response> {
       stack: scanned.stack,
       packageManager: scanned.packageManager,
       scripts: scanned.scripts,
+      preferredPort: scanned.preferredPort,
       gitBranch: scanned.gitBranch,
       gitHeadAt: scanned.gitHeadAt,
     });

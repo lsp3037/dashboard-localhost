@@ -53,6 +53,8 @@ export interface ManualProjectInput {
   stack: readonly string[];
   packageManager: PackageManager | null;
   scripts: readonly string[];
+  /** Porta declarada no script; vira preferência inicial se ainda não houver uma. */
+  preferredPort: number | null;
   gitBranch: string | null;
   gitHeadAt: string | null;
 }
@@ -115,7 +117,7 @@ const INSERT_PROJECT = `
     created_at, updated_at, last_scanned_at
   ) VALUES (
     @id, @name, @packageName, @path, @parentId, @source, @kind, 0, 0, @stack, @packageManager,
-    @scripts, @defaultScript, NULL, @gitBranch, @gitHeadAt, NULL,
+    @scripts, @defaultScript, @preferredPort, @gitBranch, @gitHeadAt, NULL,
     @now, @now, @now
   )
 `;
@@ -131,6 +133,7 @@ const UPDATE_SCANNED_PROJECT = `
     package_manager = @packageManager,
     scripts         = @scripts,
     default_script  = @defaultScript,
+    preferred_port  = COALESCE(preferred_port, @preferredPort),
     git_branch      = @gitBranch,
     git_head_at     = @gitHeadAt,
     last_scanned_at = @now,
@@ -150,6 +153,7 @@ interface InsertProjectParams {
   packageManager: PackageManager | null;
   scripts: string;
   defaultScript: string | null;
+  preferredPort: number | null;
   gitBranch: string | null;
   gitHeadAt: string | null;
   now: string;
@@ -165,6 +169,7 @@ interface UpdateScannedProjectParams {
   packageManager: PackageManager | null;
   scripts: string;
   defaultScript: string | null;
+  preferredPort: number | null;
   gitBranch: string | null;
   gitHeadAt: string | null;
   now: string;
@@ -301,6 +306,7 @@ export function upsertScannedProjects(projects: readonly ScannedProject[]): Upse
           packageManager: project.packageManager,
           scripts: JSON.stringify(project.scripts),
           defaultScript,
+          preferredPort: project.preferredPort,
           gitBranch: project.gitBranch,
           gitHeadAt: project.gitHeadAt,
           now,
@@ -318,6 +324,7 @@ export function upsertScannedProjects(projects: readonly ScannedProject[]): Upse
         existing.gitHeadAt === project.gitHeadAt &&
         existing.parentId === parentId &&
         existing.defaultScript === defaultScript &&
+        (existing.preferredPort !== null || project.preferredPort === null) &&
         !existing.missing &&
         arraysEqual(existing.stack, project.stack) &&
         arraysEqual(existing.scripts, project.scripts) &&
@@ -339,6 +346,7 @@ export function upsertScannedProjects(projects: readonly ScannedProject[]): Upse
         packageManager: project.packageManager,
         scripts: JSON.stringify(project.scripts),
         defaultScript,
+        preferredPort: project.preferredPort,
         gitBranch: project.gitBranch,
         gitHeadAt: project.gitHeadAt,
         now,
@@ -378,6 +386,7 @@ export function insertManualProject(input: ManualProjectInput): ProjectRow {
     packageManager: input.packageManager,
     scripts: JSON.stringify(input.scripts),
     defaultScript,
+    preferredPort: input.preferredPort,
     gitBranch: input.gitBranch,
     gitHeadAt: input.gitHeadAt,
     now,

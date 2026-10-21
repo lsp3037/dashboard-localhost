@@ -14,6 +14,8 @@ export interface ScannedProject {
   readonly stack: readonly string[];
   readonly packageManager: PackageManager | null;
   readonly scripts: readonly string[];
+  /** Porta declarada no script (`-p`/`--port`); só preenche a preferência quando ela ainda é nula. */
+  readonly preferredPort: number | null;
   readonly gitBranch: string | null;
   readonly gitHeadAt: string | null;
 }

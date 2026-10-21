@@ -59,6 +59,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
               <StatusDot tone={project.statusTone} label={project.statusLabel} />
+              {project.isHub && <Badge tone="accent">hub</Badge>}
               <Badge tone="neutral">{project.kind === 'node' ? 'node' : 'sem app'}</Badge>
               {project.hidden && <Badge tone="warn">oculto</Badge>}
               {project.missing && <Badge tone="error">pasta não encontrada</Badge>}

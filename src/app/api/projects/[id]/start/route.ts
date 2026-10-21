@@ -1,5 +1,6 @@
 import { toRunDto } from '@/lib/server/dto';
-import { projectNotFound } from '@/lib/server/errors';
+import { isHubPath } from '@/lib/server/discovery/paths';
+import { projectNotFound, projectRunning } from '@/lib/server/errors';
 import { jsonError, jsonOk, parseJsonBody } from '@/lib/server/http';
 import { getProcessManager } from '@/lib/server/process/manager';
 import { getProject } from '@/lib/server/repos/projects';
@@ -23,6 +24,10 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
 
     if (project === null) {
       throw projectNotFound(`Projeto ${id} não encontrado.`, { id });
+    }
+
+    if (isHubPath(project.path)) {
+      throw projectRunning('O próprio hub já está rodando e não pode se iniciar.', { id });
     }
 
     const body = await parseJsonBody(request, startRunSchema);

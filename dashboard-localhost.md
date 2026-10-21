@@ -33,7 +33,7 @@
 | Pasta | `package.json` | `.git` | Scripts relevantes | Situação no hub |
 |---|---|---|---|---|
 | `agentewhatsapp` | sim | não | `start`, `dev` | iniciável (sem branch) |
-| `dashboard-localhost` | não (hoje) | não | — | **este hub** — excluir do scan |
+| `dashboard-localhost` | sim | sim | `dev`, `start`, `build` | **este hub** — aparece marcado como hub, sempre rodando; não iniciável |
 | `Motor de Conteúdo do Instagram` | não | não | — | `non-node` (nome com espaço/acento) |
 | `prenatal-saas` | sim | sim | sem `dev`/`start` | listado, **não iniciável** (monorepo pnpm) |
 | `rea` | não | não | — | `non-node`, pasta vazia |
@@ -663,7 +663,7 @@ Passos:
    - ignorar arquivos; ignorar dotdirs (`.git`, `.agents`, `.next`, `.opencode`, `.data`);
    - ignorar nomes em `SKIP_DIRS = [node_modules, .next, dist, build, out, coverage, .turbo, .cache, venv, .venv, target]`;
    - ignorar symlinks/junctions (`isSymbolicLink()`), evitando ciclos;
-   - se `realpath(path) === realpath(process.cwd())` → marcar como `isHub` e pular (o próprio hub não se gerencia);
+   - se `realpath(path) === realpath(process.cwd())` → marcar como `isHub` e manter na listagem (aparece como rodando e não é iniciável por si mesmo);
    - candidato se existe `package.json` **ou** `.git`; senão `kind='non-node'` (listado como pasta, não iniciável);
    - **descer 1 nível em diretórios candidatos também** (pega workspaces `apps/*`, `packages/*`); o filho herda `parentId` para a UI agrupar; máximo absoluto `maxDepth=2`.
 3.1. **Expansão de workspace (obrigatória)**: se o diretório tem `pnpm-workspace.yaml`, `pnpm-workspace.yml` ou `package.json.workspaces`/`packages`, ler os globs (`apps/*`, `packages/*`) e tratar cada diretório que casa como candidato, com `parent_id` = id do workspace root. Esses filhos contam como profundidade 1 *relativa ao workspace*, não ao root — é isso que pega `prenatal-saas/apps/web` (que está a 3 níveis de `C:\Projetos`). Globs fora da raiz permitida são ignorados; `node_modules`/`.next` nunca casam.
@@ -814,7 +814,7 @@ Ordem obrigatória: **F0 → F1 → F2 → F3 → F4 → F5**. F2 depende de F1;
 - [ ] `prenatal-saas` aparece com `runnableScripts: []` (sem `dev`/`start`).
 - [ ] Raiz extra em `HUB_PROJECTS_ROOTS` é escaneada; raiz fora da allowlist do body → 403 `PATH_NOT_ALLOWED`.
 - [ ] Segundo scan → `added: 0, unchanged: 7`; duração < 2 s.
-- [ ] `dashboard-localhost` não aparece na lista (self-exclude).
+- [ ] `dashboard-localhost` aparece na lista, marcado como hub, com `http://localhost:3100` e sem ação de iniciar/parar.
 - [ ] `preferred_port`/`notes`/`hidden` de um projeto de scan sobrevivem a novo scan.
 - [ ] `npm run test` verde (≥ 15 casos, incluindo BOM, JSON inválido, nome acentuado).
 - [ ] `POST /api/projects` com `..\..\Windows` → 403 `PATH_NOT_ALLOWED`.

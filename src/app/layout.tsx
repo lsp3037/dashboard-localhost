@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 
 import { SiteHeader } from '@/components/site-header';
 import { Toaster } from '@/components/ui/toaster';
-import { listProjects } from '@/lib/server/repos/projects';
+import { loadInventory } from '@/lib/server/overview';
 
 import './globals.css';
 
@@ -22,13 +22,15 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  const projects = listProjects({ includeHidden: true });
+  const { projects } = loadInventory();
   const hidden = projects.filter((project) => project.hidden).length;
-
-  // `run` só existe a partir da F3: hoje nada está rodando nem falhou.
-  const running = 0;
-  const errors = 0;
-  const stopped = projects.length;
+  const running = projects.filter(
+    (project) => project.status === 'starting' || project.status === 'running' || project.status === 'stopping',
+  ).length;
+  const errors = projects.filter(
+    (project) => project.status === 'crashed' || project.status === 'failed',
+  ).length;
+  const stopped = projects.filter((project) => project.status === 'stopped').length;
 
   return (
     <html lang="pt-BR">

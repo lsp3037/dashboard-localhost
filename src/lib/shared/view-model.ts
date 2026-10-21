@@ -19,8 +19,8 @@ export interface StatusMeta {
 }
 
 /**
- * Estados previstos em §5.3. `run`/`lastRun` chegam sempre `null` até a F3 — nada aqui
- * inventa processo ativo: sem run, o projeto é `parado`.
+ * Estados previstos em §5.3. O hub aparece como `running`; os demais projetos só
+ * ficam ativos quando há um run correspondente. Sem run, o projeto é `parado`.
  */
 const STATUS_META: Readonly<Record<ProjectStatus, StatusMeta>> = {
   stopped: { label: 'parado', tone: 'idle' },
@@ -39,6 +39,9 @@ export function statusMeta(status: ProjectStatus): StatusMeta {
 
 function resolveStatus(project: ProjectDTO): ProjectStatus {
   if (project.missing) return 'missing';
+
+  // O hub é servido por este processo: está sempre rodando e não tem run gerenciado.
+  if (project.isHub) return 'running';
 
   switch (project.run?.status) {
     case 'starting':

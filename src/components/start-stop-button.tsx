@@ -31,6 +31,7 @@ function isActive(project: ProjectView): boolean {
 }
 
 function disabledReason(project: ProjectView, pending: boolean): string | null {
+  if (project.isHub) return 'O próprio hub não se inicia nem se para por aqui';
   if (project.missing) return 'Pasta do projeto não encontrada no disco';
   if (project.runnableScripts.length === 0) return 'Nenhum script dev/start/preview no package.json';
   if (pending) return 'Aguarde a operação terminar';
@@ -49,6 +50,16 @@ export function StartStopButton({
   const router = useRouter();
   const [pending, setPending] = useState<'start' | 'stop' | null>(null);
   const busy = useRef(false);
+
+  if (project.isHub) {
+    return (
+      <Tooltip label="Este é o próprio hub: ele não se inicia nem se para por aqui">
+        <Button size={size} variant="ghost" disabled aria-label="Hub em execução">
+          Hub
+        </Button>
+      </Tooltip>
+    );
+  }
 
   const active = isActive(project);
   const reason = disabledReason(project, pending !== null);

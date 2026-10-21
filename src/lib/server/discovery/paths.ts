@@ -38,6 +38,13 @@ export function isSamePath(a: string, b: string): boolean {
   return comparisonKey(path.resolve(a)) === comparisonKey(path.resolve(b));
 }
 
+const HUB_ROOT = canonicalizePath(process.cwd());
+
+/** O próprio hub: aparece no inventário, mas não é gerenciado por si mesmo. */
+export function isHubPath(target: string): boolean {
+  return comparisonKey(canonicalizePath(target)) === comparisonKey(HUB_ROOT);
+}
+
 /** Raízes configuradas, canônicas. */
 export function getAllowedRoots(): string[] {
   return getConfig().projectsRoots.map((root) => canonicalizePath(root));

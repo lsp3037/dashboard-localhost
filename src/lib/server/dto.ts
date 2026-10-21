@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { getConfig } from '@/lib/server/config';
+import { isHubPath } from '@/lib/server/discovery/paths';
 import type { RunState } from '@/lib/server/process/runner';
 import type { ProjectRow } from '@/lib/server/repos/projects';
 import type { RunRow } from '@/lib/server/repos/runs';
@@ -16,6 +18,7 @@ export function toProjectDto(row: ProjectRow, allowedScripts: readonly string[])
     row.defaultScript !== null && runnableScripts.includes(row.defaultScript)
       ? row.defaultScript
       : (runnableScripts[0] ?? null);
+  const isHub = isHubPath(row.path);
 
   return {
     id: row.id,
@@ -23,6 +26,7 @@ export function toProjectDto(row: ProjectRow, allowedScripts: readonly string[])
     packageName: row.packageName,
     path: row.path,
     parentId: row.parentId,
+    isHub,
     kind: row.kind,
     hidden: row.hidden,
     missing: row.missing,
@@ -31,7 +35,7 @@ export function toProjectDto(row: ProjectRow, allowedScripts: readonly string[])
     scripts: [...row.scripts],
     runnableScripts,
     defaultScript,
-    preferredPort: row.preferredPort,
+    preferredPort: isHub ? getConfig().port : row.preferredPort,
     notes: row.notes,
     gitBranch: row.gitBranch,
     gitHeadAt: row.gitHeadAt,

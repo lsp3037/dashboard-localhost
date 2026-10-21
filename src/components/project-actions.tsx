@@ -17,7 +17,7 @@ export function ProjectActions({ project }: { project: ProjectView }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {!active && project.runnableScripts.length > 1 && (
+      {!active && !project.isHub && project.runnableScripts.length > 1 && (
         <>
           <label htmlFor={`script-${project.id}`} className="sr-only">
             Script para iniciar
