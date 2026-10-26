@@ -4,6 +4,7 @@ import path from 'node:path';
 import { scanProjects } from '@/lib/server/discovery/scan';
 import { invalidBody } from '@/lib/server/errors';
 import { jsonError, jsonOk, parseJsonBody } from '@/lib/server/http';
+import { clearScannedProjects } from '@/lib/server/repos/projects';
 import { saveHubSettings } from '@/lib/server/repos/settings';
 import { onboardingRequestSchema } from '@/lib/validation/settings';
 
@@ -35,6 +36,10 @@ export async function POST(request: Request): Promise<Response> {
       scanDepth: depth,
       onboardingCompleted: true,
     });
+
+    if (body.cleanPreviousScan) {
+      clearScannedProjects();
+    }
 
     const scanResult = await scanProjects({
       roots: resolvedRoots,

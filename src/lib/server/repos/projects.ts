@@ -447,6 +447,16 @@ export function deleteProject(id: string): ProjectRow | null {
   return existing;
 }
 
+/**
+ * Remove todos os projetos descobertos automaticamente por scan (source = 'scan').
+ * Preserva projetos adicionados manualmente (source = 'manual').
+ */
+export function clearScannedProjects(): number {
+  const db = getDb();
+  const result = db.prepare<[]>("DELETE FROM projects WHERE source = 'scan'").run();
+  return result.changes;
+}
+
 /** Marca como `missing` os projetos de scan que sumiram do disco. Retorna quantos mudaram. */
 export function markMissing(paths: readonly string[]): number {
   if (paths.length === 0) return 0;

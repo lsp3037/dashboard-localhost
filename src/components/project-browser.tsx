@@ -192,6 +192,14 @@ export function ProjectBrowser({
               )}
             </div>
 
+            <Button
+              variant="secondary"
+              onClick={() => setOnboardingOpen(true)}
+              title="Reconfigurar pastas e nível de varredura"
+            >
+              <FolderIcon width={13} height={13} />
+              Pastas
+            </Button>
             <Button variant="secondary" onClick={() => setAddOpen(true)}>
               <PlusIcon width={13} height={13} />
               Adicionar
@@ -286,6 +294,7 @@ export function ProjectBrowser({
         open={onboardingOpen}
         onClose={() => setOnboardingOpen(false)}
         defaultRoots={roots}
+        isReconfiguration={projects.length > 0}
       />
     </>
   );

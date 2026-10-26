@@ -16,6 +16,9 @@ interface OnboardingDialogProps {
   defaultRoots?: readonly string[];
   defaultScanDepth?: number;
   onCompleted?: () => void;
+  title?: string;
+  description?: string;
+  isReconfiguration?: boolean;
 }
 
 interface OnboardingResponse {
@@ -30,12 +33,16 @@ export function OnboardingDialog({
   defaultRoots,
   defaultScanDepth = 2,
   onCompleted,
+  title,
+  description,
+  isReconfiguration = false,
 }: OnboardingDialogProps) {
   const router = useRouter();
   const [roots, setRoots] = useState<string[]>(() =>
     defaultRoots && defaultRoots.length > 0 ? [...defaultRoots] : [],
   );
   const [scanDepth, setScanDepth] = useState<number>(defaultScanDepth);
+  const [cleanPreviousScan, setCleanPreviousScan] = useState<boolean>(isReconfiguration);
   const [pending, setPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -52,11 +59,12 @@ export function OnboardingDialog({
       const response = await postJson<OnboardingResponse>('/api/settings/onboarding', {
         projectsRoots: roots,
         scanDepth,
+        cleanPreviousScan,
       });
 
       pushToast({
         tone: 'success',
-        title: 'Bem-vindo ao Dashboard!',
+        title: isReconfiguration ? 'Pastas e varredura atualizadas!' : 'Bem-vindo ao Dashboard!',
         description: `Configuração concluída. ${
           response.count !== undefined ? `${response.count} projetos descobertos.` : 'Iniciando varredura.'
         }`,
@@ -76,14 +84,20 @@ export function OnboardingDialog({
     }
   };
 
+  const dialogTitle = title ?? (isReconfiguration ? 'Configurar Pastas e Nível de Varredura' : 'Bem-vindo ao Dashboard de Projetos');
+  const dialogDesc =
+    description ??
+    (isReconfiguration
+      ? 'Ajuste os diretórios monitorados e o nível de profundidade. Se o nível selecionado anteriormente capturou subpastas indesejadas, você pode redefinir aqui.'
+      : 'Para começar, selecione onde seus repositórios e projetos de código estão armazenados no seu computador.');
+
   return (
     <Dialog
       open={open}
-      title="Bem-vindo ao Dashboard de Projetos"
-      description="Para começar, selecione onde seus repositórios e projetos de código estão armazenados no seu computador."
+      title={dialogTitle}
+      description={dialogDesc}
       maxWidthClass="w-[min(48rem,calc(100vw-2rem))]"
       onClose={() => {
-        // Se ainda não salvou raízes, permite fechar apenas se já tiver ao menos uma raiz ou sob demanda
         if (!pending && onClose) {
           onClose();
         }
@@ -139,7 +153,7 @@ export function OnboardingDialog({
         {/* Profundidade de Varredura */}
         <div className="rounded-sm border border-hub-border bg-hub-surface p-3">
           <label className="mb-2 block text-[11px] font-medium uppercase tracking-wider text-hub-text-muted">
-            Profundidade de Varredura de Projetos
+            Nível de Profundidade da Varredura
           </label>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
@@ -153,11 +167,11 @@ export function OnboardingDialog({
               ].join(' ')}
             >
               <div className="flex w-full items-center justify-between">
-                <span className="font-medium text-[12px] text-hub-text">2 Níveis (Recomendado)</span>
+                <span className="font-medium text-[12px] text-hub-text">2 Níveis (Subpastas & Workspaces)</span>
                 <span className="font-mono text-[10px] text-hub-accent">Padrão</span>
               </div>
               <p className="text-[11px] leading-4 text-hub-text-muted">
-                Varre até 2 pastas de profundidade. Ideal se você organiza projetos por cliente ou organização (ex:
+                Varre até 2 pastas de profundidade e busca pacotes dentro de monorepos/workspaces (ex:
                 <code className="ml-1 font-mono text-[10px]">C:\Projetos\empresa\app</code>).
               </p>
             </button>
@@ -173,15 +187,35 @@ export function OnboardingDialog({
               ].join(' ')}
             >
               <div className="flex w-full items-center justify-between">
-                <span className="font-medium text-[12px] text-hub-text">1 Nível</span>
+                <span className="font-medium text-[12px] text-hub-text">1 Nível (Apenas Raiz Imediata)</span>
               </div>
               <p className="text-[11px] leading-4 text-hub-text-muted">
-                Varre somente os projetos na raiz direta (ex:
-                <code className="ml-1 font-mono text-[10px]">C:\Projetos\meu-app</code>). Mais rápido para pastas sem
-                subcategorias.
+                Varre <strong>apenas</strong> as pastas diretamente dentro da raiz (ex:
+                <code className="ml-1 font-mono text-[10px]">C:\Projetos\meu-app</code>). Não lista subpastas internas.
               </p>
             </button>
           </div>
+
+          {/* Opção para limpar varredura anterior */}
+          <div className="mt-3 pt-3 border-t border-hub-border">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={cleanPreviousScan}
+                onChange={(e) => setCleanPreviousScan(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-hub-border-strong bg-hub-bg text-hub-accent focus:ring-hub-accent"
+              />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[12px] font-medium text-hub-text">
+                  Limpar inventário anterior antes de varrer
+                </span>
+                <span className="text-[11px] text-hub-text-muted">
+                  Recomendado caso tenha selecionado o nível ou pasta errada: remove subpastas antigas do SQLite para deixar o inventário limpo.
+                </span>
+              </div>
+            </label>
+          </div>
+
           <p className="mt-2 text-[10px] text-hub-text-muted/70">
             * O Dashboard ignora automaticamente pastas como <code className="font-mono">node_modules</code>,{' '}
             <code className="font-mono">.git</code>, <code className="font-mono">dist</code> e pastas de sistema.

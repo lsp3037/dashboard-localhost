@@ -66,10 +66,49 @@ export default function SettingsPage() {
         <ScanButton variant="secondary" label="Re-scan" />
       </div>
 
+      {/* Seção de Destaque: Reconfiguração Sempre Visível de Pastas e Varredura */}
+      <div className="rounded-sm border border-hub-border-strong bg-hub-surface p-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-xl space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2 w-2 rounded-full bg-hub-accent" aria-hidden="true" />
+              <h2 className="text-[13px] font-semibold uppercase tracking-wider text-hub-text">
+                Pastas de Projetos & Nível de Varredura
+              </h2>
+            </div>
+            <p className="text-[12px] leading-5 text-hub-text-muted">
+              Configure as pastas onde seus projetos estão localizados e a profundidade da varredura. Se o nível selecionado capturou subpastas indesejadas (ex: monorepos ou pacotes internos), você pode redefinir aqui e limpar o inventário a qualquer momento.
+            </p>
+          </div>
+          <ManageRootsDialog
+            roots={config.projectsRoots}
+            scanDepth={config.scanDepth}
+            variant="primary"
+            size="md"
+            label="Reconfigurar Pastas e Nível"
+          />
+        </div>
+
+        <div className="mt-3 grid grid-cols-1 gap-2 border-t border-hub-border pt-3 sm:grid-cols-2 text-[11px] font-mono">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] uppercase tracking-wider text-hub-text-muted">Pastas Ativas</span>
+            <span className="text-hub-text font-medium truncate" title={config.projectsRoots.join('; ')}>
+              {config.projectsRoots.join('; ')}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5 sm:text-right">
+            <span className="text-[10px] uppercase tracking-wider text-hub-text-muted">Profundidade Atual</span>
+            <span className="text-hub-text font-medium">
+              {config.scanDepth === 1 ? '1 Nível (somente raiz direta)' : '2 Níveis (varre subpastas e workspaces)'}
+            </span>
+          </div>
+        </div>
+      </div>
+
       <Section
         title="Descoberta"
         description="scan"
-        action={<ManageRootsDialog roots={config.projectsRoots} scanDepth={config.scanDepth} />}
+        action={<ManageRootsDialog roots={config.projectsRoots} scanDepth={config.scanDepth} label="Alterar" />}
       >
         <dl>
           <Row label="Raízes monitoradas" env="HUB_PROJECTS_ROOTS">

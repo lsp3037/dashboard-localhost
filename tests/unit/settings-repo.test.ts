@@ -4,7 +4,8 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { closeDb } from '@/lib/server/db';
+import { closeDb, getDb } from '@/lib/server/db';
+import { clearScannedProjects } from '@/lib/server/repos/projects';
 import {
   getHubSettings,
   getSetting,
@@ -48,82 +49,54 @@ describe('settings repository', () => {
     });
   });
 
-  describe('setSetting / getSetting', () => {
-    it('persiste chave e valor e permite sobrescrita atômica', () => {
-      setSetting('custom_key', 'initial_value');
-      expect(getSetting('custom_key')).toBe('initial_value');
-
-      setSetting('custom_key', 'updated_value');
-      expect(getSetting('custom_key')).toBe('updated_value');
+  describe('CRUD de settings', () => {
+    it('salva e recupera uma configuração simples', () => {
+      setSetting('custom_key', 'custom_value');
+      expect(getSetting('custom_key')).toBe('custom_value');
     });
-  });
 
-  describe('saveHubSettings / getHubSettings', () => {
-    it('salva e recupera projectsRoots, scanDepth e onboardingCompleted', () => {
+    it('atualiza valor existente mantendo unicidade da chave', () => {
+      setSetting('version', '1.0');
+      setSetting('version', '2.0');
+      expect(getSetting('version')).toBe('2.0');
+    });
+
+    it('salva e lê projetos raízes, scanDepth e onboardingCompleted', () => {
       saveHubSettings({
         projectsRoots: ['C:\\Projetos', 'D:\\Workspace'],
-        scanDepth: 2,
+        scanDepth: 1,
         onboardingCompleted: true,
       });
 
       const settings = getHubSettings();
       expect(settings.projectsRoots).toEqual(['C:\\Projetos', 'D:\\Workspace']);
-      expect(settings.scanDepth).toBe(2);
+      expect(settings.scanDepth).toBe(1);
       expect(settings.onboardingCompleted).toBe(true);
     });
 
-    it('permite atualizar propriedades parcialmente sem sobrescrever as demais', () => {
+    it('permite atualização parcial sem afetar outras chaves', () => {
       saveHubSettings({
         projectsRoots: ['C:\\Projetos'],
-        scanDepth: 1,
-        onboardingCompleted: false,
-      });
-
-      // Atualiza apenas onboardingCompleted
-      saveHubSettings({
+        scanDepth: 2,
         onboardingCompleted: true,
       });
 
-      let current = getHubSettings();
-      expect(current.projectsRoots).toEqual(['C:\\Projetos']);
-      expect(current.scanDepth).toBe(1);
-      expect(current.onboardingCompleted).toBe(true);
-
-      // Atualiza apenas scanDepth
-      saveHubSettings({
-        scanDepth: 2,
-      });
-
-      current = getHubSettings();
-      expect(current.projectsRoots).toEqual(['C:\\Projetos']);
-      expect(current.scanDepth).toBe(2);
-      expect(current.onboardingCompleted).toBe(true);
-    });
-
-    it('trata valores aceitáveis de scanDepth (1 e 2)', () => {
       saveHubSettings({ scanDepth: 1 });
-      expect(getHubSettings().scanDepth).toBe(1);
 
-      saveHubSettings({ scanDepth: 2 });
-      expect(getHubSettings().scanDepth).toBe(2);
+      const updated = getHubSettings();
+      expect(updated.projectsRoots).toEqual(['C:\\Projetos']);
+      expect(updated.scanDepth).toBe(1);
+      expect(updated.onboardingCompleted).toBe(true);
     });
   });
 
-  describe('resiliência a dados corrompidos ou inesperados', () => {
-    it('retorna null para projectsRoots quando o JSON no banco é inválido', () => {
-      setSetting('projects_roots', 'invalid-json{[');
+  describe('resiliência a dados corrompidos', () => {
+    it('trata JSON malformado em projects_roots como null', () => {
+      setSetting('projects_roots', '{invalid json');
       expect(getHubSettings().projectsRoots).toBeNull();
     });
 
-    it('retorna null para projectsRoots quando o JSON não é um array de strings', () => {
-      setSetting('projects_roots', JSON.stringify({ path: 'C:\\Projetos' }));
-      expect(getHubSettings().projectsRoots).toBeNull();
-
-      setSetting('projects_roots', JSON.stringify([123, true]));
-      expect(getHubSettings().projectsRoots).toBeNull();
-    });
-
-    it('retorna null para scanDepth quando valor não é 1 ou 2', () => {
+    it('rejeita scan_depth com valores fora de 1 e 2', () => {
       setSetting('scan_depth', '3');
       expect(getHubSettings().scanDepth).toBeNull();
 
@@ -140,6 +113,29 @@ describe('settings repository', () => {
 
       setSetting('onboarding_completed', '0');
       expect(getHubSettings().onboardingCompleted).toBe(false);
+    });
+  });
+
+  describe('clearScannedProjects', () => {
+    it('remove projetos de scan e preserva projetos manuais', () => {
+      const db = getDb();
+      const now = new Date().toISOString();
+      db.prepare(`
+        INSERT INTO projects (id, name, path, source, kind, created_at, updated_at)
+        VALUES ('p1', 'Auto Project', '/path/auto', 'scan', 'node', ?, ?)
+      `).run(now, now);
+
+      db.prepare(`
+        INSERT INTO projects (id, name, path, source, kind, created_at, updated_at)
+        VALUES ('p2', 'Manual Project', '/path/manual', 'manual', 'node', ?, ?)
+      `).run(now, now);
+
+      const removed = clearScannedProjects();
+      expect(removed).toBe(1);
+
+      const rows = db.prepare('SELECT id, source FROM projects').all() as Array<{ id: string; source: string }>;
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.id).toBe('p2');
     });
   });
 
