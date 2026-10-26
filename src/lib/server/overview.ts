@@ -1,14 +1,39 @@
 import 'server-only';
 
+import fs from 'node:fs';
+import { cache } from 'react';
+
 import { getConfig } from '@/lib/server/config';
 import type { HubConfig } from '@/lib/server/config';
 import { toProjectDto, attachRuns } from '@/lib/server/dto';
 import { getProject, listProjects } from '@/lib/server/repos/projects';
 import { getActiveRun, getLastFinishedRun, getRunSummaries, listRuns } from '@/lib/server/repos/runs';
+import { getHubSettings } from '@/lib/server/repos/settings';
 import type { ProjectRow } from '@/lib/server/repos/projects';
 import { formatDateTime, formatRelativeTime, latestIso } from '@/lib/shared/format';
 import { toProjectView, toRunView } from '@/lib/shared/view-model';
 import type { ProjectView, RunView } from '@/lib/shared/view-model';
+
+/**
+ * Determina se o sistema precisa do fluxo de onboarding:
+ * `true` se onboarding_completed for falso OU se nenhuma raiz configurada existir no sistema de arquivos host.
+ */
+export function checkNeedsOnboarding(roots: readonly string[]): boolean {
+  const settings = getHubSettings();
+  if (!settings.onboardingCompleted) {
+    return true;
+  }
+
+  const anyRootExists = roots.some((root) => {
+    try {
+      return fs.existsSync(root) && fs.statSync(root).isDirectory();
+    } catch {
+      return false;
+    }
+  });
+
+  return !anyRootExists;
+}
 
 /**
  * Leituras de tela prontas para render. Ficam fora dos componentes porque
@@ -21,14 +46,16 @@ export interface InventorySnapshot {
   readonly lastScannedAt: string | null;
   readonly lastScanLabel: string | null;
   readonly lastScanTitle: string | null;
+  readonly needsOnboarding: boolean;
 }
 
-export function loadInventory(): InventorySnapshot {
+export const loadInventory = cache((): InventorySnapshot => {
   const config = getConfig();
   const rows = listProjects({ includeHidden: true });
   const now = Date.now();
   const lastScannedAt = latestIso(rows.map((row) => row.lastScannedAt));
   const { active, last } = getRunSummaries();
+  const needsOnboarding = checkNeedsOnboarding(config.projectsRoots);
 
   const projects = rows.map((row) => {
     const dto = attachRuns(
@@ -46,8 +73,9 @@ export function loadInventory(): InventorySnapshot {
     lastScannedAt,
     lastScanLabel: formatRelativeTime(lastScannedAt, now),
     lastScanTitle: formatDateTime(lastScannedAt),
+    needsOnboarding,
   };
-}
+});
 
 export interface ProjectDetailSnapshot {
   readonly project: ProjectView;
@@ -78,6 +106,8 @@ export interface SettingsSnapshot {
   readonly lastScannedAt: string | null;
   readonly lastScanLabel: string | null;
   readonly lastScanTitle: string | null;
+  readonly needsOnboarding: boolean;
+  readonly onboardingCompleted: boolean;
 }
 
 export function loadSettings(): SettingsSnapshot {
@@ -85,6 +115,8 @@ export function loadSettings(): SettingsSnapshot {
   const rows = listProjects({ includeHidden: true });
   const now = Date.now();
   const lastScannedAt = latestIso(rows.map((row) => row.lastScannedAt));
+  const settings = getHubSettings();
+  const needsOnboarding = checkNeedsOnboarding(config.projectsRoots);
 
   return {
     config,
@@ -92,5 +124,7 @@ export function loadSettings(): SettingsSnapshot {
     lastScannedAt,
     lastScanLabel: formatRelativeTime(lastScannedAt, now),
     lastScanTitle: formatDateTime(lastScannedAt),
+    needsOnboarding,
+    onboardingCompleted: settings.onboardingCompleted,
   };
 }

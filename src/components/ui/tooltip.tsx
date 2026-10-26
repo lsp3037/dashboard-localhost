@@ -20,7 +20,7 @@ export function Tooltip({ label, children, side = 'top', className = '' }: Toolt
       : 'top-full mt-1.5 origin-top';
 
   return (
-    <span className={`group/tt relative inline-flex ${className}`} title={label}>
+    <span className={`group/tt relative inline-flex ${className}`}>
       {children}
       <span
         role="tooltip"

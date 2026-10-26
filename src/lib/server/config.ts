@@ -3,6 +3,8 @@ import 'server-only';
 import path from 'node:path';
 import { z } from 'zod';
 
+import { getHubSettings, onSettingsChange } from '@/lib/server/repos/settings';
+
 const DEFAULT_PROJECTS_ROOTS = String.raw`C:\Projetos`;
 const DEFAULT_ALLOWED_SCRIPTS = 'dev,start,preview';
 const SCRIPT_NAME_PATTERN = /^[a-z0-9:_-]{1,32}$/;
@@ -108,14 +110,30 @@ function buildConfig(env: Record<string, string | undefined>): HubConfig {
   }
 
   const data = parsed.data;
-  const projectsRoots = parseProjectsRoots(data.HUB_PROJECTS_ROOTS);
+  let projectsRoots = parseProjectsRoots(data.HUB_PROJECTS_ROOTS);
+  let scanDepth = data.HUB_SCAN_DEPTH;
   const allowedScripts = parseAllowedScripts(data.HUB_ALLOWED_SCRIPTS);
   const dataDir = data.HUB_DATA_DIR ? path.resolve(data.HUB_DATA_DIR) : path.join(process.cwd(), '.data');
+
+  try {
+    const dbSettings = getHubSettings();
+    if (dbSettings.projectsRoots && dbSettings.projectsRoots.length > 0) {
+      const normalizedRoots = parseProjectsRoots(dbSettings.projectsRoots.join(';'));
+      if (normalizedRoots.length > 0) {
+        projectsRoots = normalizedRoots;
+      }
+    }
+    if (dbSettings.scanDepth !== null) {
+      scanDepth = dbSettings.scanDepth;
+    }
+  } catch {
+    // Banco ainda não inicializado ou tabela não migrada: utiliza variáveis de ambiente
+  }
 
   return {
     port: data.HUB_PORT,
     projectsRoots,
-    scanDepth: data.HUB_SCAN_DEPTH,
+    scanDepth,
     bootTimeoutMs: data.HUB_BOOT_TIMEOUT_MS,
     stopGraceMs: data.HUB_STOP_GRACE_MS,
     logBufferLines: data.HUB_LOG_BUFFER_LINES,
@@ -129,6 +147,15 @@ function buildConfig(env: Record<string, string | undefined>): HubConfig {
 }
 
 let cachedConfig: HubConfig | null = null;
+
+onSettingsChange(() => {
+  cachedConfig = null;
+});
+
+/** Limpa o cache de configuração em memória. */
+export function invalidateConfigCache(): void {
+  cachedConfig = null;
+}
 
 /** Lê e valida o ambiente na primeira chamada; chamadas seguintes reutilizam o resultado. */
 export function getConfig(): HubConfig {

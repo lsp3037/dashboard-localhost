@@ -68,6 +68,17 @@ const V2_ADD_PACKAGE_NAME = `
 ALTER TABLE projects ADD COLUMN package_name TEXT;
 `;
 
+/**
+ * v3: configurações persistidas do hub (raízes customizadas, scan depth, status de onboarding).
+ */
+const V3_HUB_SETTINGS = `
+CREATE TABLE IF NOT EXISTS hub_settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+`;
+
 const MIGRATIONS: readonly Migration[] = [
   {
     version: 1,
@@ -76,6 +87,10 @@ const MIGRATIONS: readonly Migration[] = [
   {
     version: 2,
     statements: [V2_ADD_PACKAGE_NAME],
+  },
+  {
+    version: 3,
+    statements: [V3_HUB_SETTINGS],
   },
 ];
 

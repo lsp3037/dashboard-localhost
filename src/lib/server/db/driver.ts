@@ -5,7 +5,6 @@ import path from 'node:path';
 
 import Database from 'better-sqlite3';
 
-import { getConfig } from '@/lib/server/config';
 import { migrate } from '@/lib/server/db/migrations';
 
 export type HubDatabase = Database.Database;
@@ -22,8 +21,13 @@ const globalForDb = globalThis as typeof globalThis & DbGlobal;
 
 const DATABASE_FILE_NAME = 'hub.db';
 
+export function getDataDirectory(): string {
+  const custom = process.env.HUB_DATA_DIR;
+  return custom ? path.resolve(custom) : path.join(process.cwd(), '.data');
+}
+
 export function getDatabasePath(): string {
-  return path.join(getConfig().dataDir, DATABASE_FILE_NAME);
+  return path.join(getDataDirectory(), DATABASE_FILE_NAME);
 }
 
 function openDatabase(file: string): HubDatabase {

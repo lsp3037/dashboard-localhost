@@ -12,13 +12,14 @@ interface DialogProps {
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  maxWidthClass?: string;
 }
 
 /**
  * `<dialog>` nativo: foco preso, `Esc` fecha e o foco volta ao gatilho sem lib.
  * O `open` é controlado por estado React; o efeito sincroniza com `showModal()`.
  */
-export function Dialog({ open, title, description, onClose, children, footer }: DialogProps) {
+export function Dialog({ open, title, description, onClose, children, footer, maxWidthClass }: DialogProps) {
   const ref = useRef<HTMLDialogElement | null>(null);
   const titleId = useId();
   const descriptionId = useId();
@@ -47,8 +48,14 @@ export function Dialog({ open, title, description, onClose, children, footer }: 
         event.preventDefault();
         onClose();
       }}
+      onClick={(event) => {
+        if (event.target === ref.current) {
+          onClose();
+        }
+      }}
       className={[
-        'm-auto w-[min(34rem,calc(100vw-2rem))] max-h-[calc(100dvh-3rem)] overflow-y-auto p-0',
+        'm-auto max-h-[calc(100dvh-3rem)] overflow-y-auto p-0',
+        maxWidthClass ?? 'w-[min(34rem,calc(100vw-2rem))]',
         'rounded-sm border border-hub-border-strong bg-hub-surface text-hub-text',
         'backdrop:bg-hub-bg/85',
       ].join(' ')}

@@ -11,7 +11,7 @@
   --color-hub-border-strong: #334155;
 
   --color-hub-text: #e2e8f0;
-  --color-hub-text-muted: #94a3b8;
+  --color-hub-text-muted: #9fb2c8;
 
   --color-hub-accent: #22d3ee;
   --color-hub-accent-strong: #06b6d4;
@@ -83,9 +83,9 @@
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
 }

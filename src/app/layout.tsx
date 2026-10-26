@@ -1,11 +1,24 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 
 import { SiteHeader } from '@/components/site-header';
 import { Toaster } from '@/components/ui/toaster';
 import { loadInventory } from '@/lib/server/overview';
 
 import './globals.css';
+
+const fontSans = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+});
+
+const fontMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap',
+});
 
 /**
  * O layout lê contadores direto do SQLite (Server Component). Para não congelar
@@ -33,8 +46,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   const stopped = projects.filter((project) => project.status === 'stopped').length;
 
   return (
-    <html lang="pt-BR">
-      <body className="min-h-dvh bg-hub-bg text-hub-text antialiased">
+    <html lang="pt-BR" className={`${fontSans.variable} ${fontMono.variable}`}>
+      <body className={`${fontSans.variable} ${fontMono.variable} min-h-dvh bg-hub-bg text-hub-text antialiased`}>
         <a
           href="#conteudo"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:border focus:border-hub-accent focus:bg-hub-bg focus:px-3 focus:py-1.5 focus:text-[12px] focus:text-hub-text"

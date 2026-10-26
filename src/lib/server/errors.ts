@@ -37,7 +37,14 @@ export class AppError extends Error {
     this.status = status;
     this.details = details;
   }
+
+  get statusCode(): number {
+    return this.status;
+  }
 }
+
+/** Alias para compatibilidade com testes e módulos legados. */
+export class HubHttpError extends AppError {}
 
 /**
  * `instanceof` sozinho não basta: com Turbopack o mesmo módulo pode ser carregado em

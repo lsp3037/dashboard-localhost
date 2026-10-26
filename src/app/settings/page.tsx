@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+import { ManageRootsDialog } from '@/components/manage-roots-dialog';
 import { ScanButton } from '@/components/scan-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,12 +14,25 @@ export const metadata: Metadata = {
   title: 'Configurações',
 };
 
-function Section({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+function Section({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  description: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <section className="border border-hub-border bg-hub-surface">
-      <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-hub-border px-3 py-2">
-        <h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-hub-text-muted">{title}</h2>
-        <span className="font-mono text-[10px] text-hub-text-muted/70">{description}</span>
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-hub-border px-3 py-2">
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-[11px] font-medium uppercase tracking-[0.12em] text-hub-text-muted">{title}</h2>
+          <span className="font-mono text-[10px] text-hub-text-muted/70">{description}</span>
+        </div>
+        {action && <div>{action}</div>}
       </header>
       {children}
     </section>
@@ -46,14 +60,17 @@ export default function SettingsPage() {
         <div className="min-w-0">
           <h1 className="text-[22px] font-semibold leading-7 tracking-tight text-hub-text">Configurações</h1>
           <p className="mt-0.5 max-w-prose text-[12px] leading-5 text-hub-text-muted">
-            Somente leitura: os valores vêm do ambiente do processo. Para mudar, edite o{' '}
-            <code className="whitespace-nowrap font-mono">.env</code> e reinicie o hub.
+            Pastas raízes e profundidade de varredura podem ser editadas diretamente aqui. Demais parâmetros de processo refletem as variáveis de ambiente (<code className="whitespace-nowrap font-mono">.env</code>).
           </p>
         </div>
         <ScanButton variant="secondary" label="Re-scan" />
       </div>
 
-      <Section title="Descoberta" description="scan">
+      <Section
+        title="Descoberta"
+        description="scan"
+        action={<ManageRootsDialog roots={config.projectsRoots} scanDepth={config.scanDepth} />}
+      >
         <dl>
           <Row label="Raízes monitoradas" env="HUB_PROJECTS_ROOTS">
             <span className="flex flex-col items-end gap-0.5">

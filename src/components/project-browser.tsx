@@ -1,16 +1,17 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AddProjectDialog } from '@/components/add-project-dialog';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import type { ConfirmAction } from '@/components/confirm-dialog';
 import { EditProjectDialog } from '@/components/edit-project-dialog';
 import { EmptyState, ScanCta } from '@/components/empty-state';
+import { OnboardingDialog } from '@/components/onboarding-dialog';
 import { ProjectGrid } from '@/components/project-grid';
 import { RunMonitor } from '@/components/run-monitor';
 import { Button } from '@/components/ui/button';
-import { CloseIcon, PlusIcon, SearchIcon } from '@/components/ui/icons';
+import { CloseIcon, FolderIcon, PlusIcon, SearchIcon } from '@/components/ui/icons';
 import { ProjectGridSkeleton } from '@/components/ui/skeleton';
 import { subscribeScanning } from '@/lib/client/hub-events';
 import { FILTER_LABELS } from '@/lib/shared/labels';
@@ -24,21 +25,52 @@ interface ProjectBrowserProps {
   /** "dados de 5 min atrás", calculado no servidor. */
   lastScanLabel: string | null;
   lastScanTitle: string | null;
+  needsOnboarding?: boolean;
 }
 
 function isActiveRun(project: ProjectView): boolean {
   return project.status === 'starting' || project.status === 'running' || project.status === 'stopping';
 }
 
-export function ProjectBrowser({ projects, roots, lastScanLabel, lastScanTitle }: ProjectBrowserProps) {
+export function ProjectBrowser({
+  projects,
+  roots,
+  lastScanLabel,
+  lastScanTitle,
+  needsOnboarding = false,
+}: ProjectBrowserProps) {
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [scanning, setScanning] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(needsOnboarding);
   const [editing, setEditing] = useState<ProjectView | null>(null);
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => subscribeScanning(setScanning), []);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        const activeElement = document.activeElement;
+        const tagName = activeElement?.tagName.toLowerCase();
+        const isEditable =
+          tagName === 'input' ||
+          tagName === 'textarea' ||
+          tagName === 'select' ||
+          (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+        if (!isEditable) {
+          event.preventDefault();
+          searchInputRef.current?.focus();
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const counts = useMemo(() => {
     const running = projects.filter(isActiveRun).length;
@@ -69,7 +101,7 @@ export function ProjectBrowser({ projects, roots, lastScanLabel, lastScanTitle }
       if (project.parentId === null) continue;
       if (included.has(project.parentId)) continue;
       const parent = byId.get(project.parentId);
-      if (parent !== undefined && matchesFilter(parent)) {
+      if (parent !== undefined) {
         matched.push(parent);
         included.add(parent.id);
       }
@@ -126,15 +158,25 @@ export function ProjectBrowser({ projects, roots, lastScanLabel, lastScanTitle }
               </label>
               <input
                 id="project-search"
+                ref={searchInputRef}
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    if (query.length > 0) {
+                      setQuery('');
+                    } else {
+                      event.currentTarget.blur();
+                    }
+                  }
+                }}
                 placeholder="Buscar nome ou caminho"
                 autoComplete="off"
                 spellCheck={false}
                 className="h-8 w-56 rounded-sm border border-hub-border-strong bg-hub-bg pl-7 pr-7 font-mono text-[11px] text-hub-text placeholder:font-sans placeholder:text-hub-text-muted/60 focus-visible:border-hub-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-hub-accent sm:w-64"
               />
-              {query.length > 0 && (
+              {query.length > 0 ? (
                 <button
                   type="button"
                   onClick={() => setQuery('')}
@@ -143,6 +185,10 @@ export function ProjectBrowser({ projects, roots, lastScanLabel, lastScanTitle }
                 >
                   <CloseIcon width={12} height={12} />
                 </button>
+              ) : (
+                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
+                  <kbd className="pointer-events-none hidden font-mono text-[10px] text-hub-text-muted sm:inline">/</kbd>
+                </span>
               )}
             </div>
 
@@ -189,6 +235,10 @@ export function ProjectBrowser({ projects, roots, lastScanLabel, lastScanTitle }
           description="O hub lê as raízes monitoradas procurando package.json ou .git. A primeira varredura popula o grid."
         >
           <ScanCta rootLabel={rootLabel} />
+          <Button variant="secondary" onClick={() => setOnboardingOpen(true)}>
+            <FolderIcon width={13} height={13} />
+            Configurar pastas
+          </Button>
           <Button variant="ghost" onClick={() => setAddOpen(true)}>
             <PlusIcon width={13} height={13} />
             Adicionar por caminho
@@ -232,6 +282,11 @@ export function ProjectBrowser({ projects, roots, lastScanLabel, lastScanTitle }
       <AddProjectDialog open={addOpen} onClose={() => setAddOpen(false)} roots={roots} />
       <EditProjectDialog key={editing?.id ?? 'none'} project={editing} onClose={() => setEditing(null)} />
       <ConfirmDialog action={confirm} onClose={() => setConfirm(null)} />
+      <OnboardingDialog
+        open={onboardingOpen}
+        onClose={() => setOnboardingOpen(false)}
+        defaultRoots={roots}
+      />
     </>
   );
 }

@@ -10,7 +10,9 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardPage() {
-  const { projects, roots, lastScanLabel, lastScanTitle } = loadInventory();
+  const inventory = loadInventory();
+  const { projects, roots, lastScanLabel, lastScanTitle } = inventory;
+  const needsOnboarding = (inventory as { needsOnboarding?: boolean }).needsOnboarding ?? false;
 
   return (
     <ProjectBrowser
@@ -18,6 +20,7 @@ export default function DashboardPage() {
       roots={roots}
       lastScanLabel={lastScanLabel}
       lastScanTitle={lastScanTitle}
+      needsOnboarding={needsOnboarding}
     />
   );
 }

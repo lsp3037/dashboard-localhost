@@ -56,6 +56,10 @@ async function request<T>(url: string, init: RequestInit): Promise<T> {
   return payload as T;
 }
 
+export function getJson<T>(url: string): Promise<T> {
+  return request<T>(url, { method: 'GET' });
+}
+
 export function postJson<T>(url: string, body?: unknown): Promise<T> {
   return request<T>(url, {
     method: 'POST',
