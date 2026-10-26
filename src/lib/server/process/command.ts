@@ -54,6 +54,55 @@ export function buildCommand(packageManager: PackageManager | null, script: stri
   return runner(script);
 }
 
+/**
+ * Constrói o comando de execução considerando a stack do projeto.
+ * - Para Laravel: usa `composer run dev`, `php artisan serve & <pm> run dev` ou `php artisan serve`.
+ * - Para Django: usa `python manage.py runserver` se não houver script customizado em package.json.
+ */
+export async function buildProjectCommand(
+  projectPath: string,
+  packageManager: PackageManager | null,
+  script: string,
+  stack: readonly string[] = [],
+): Promise<RunnerCommand> {
+  const isLaravel = stack.includes('laravel');
+
+  if (isLaravel && (script === 'dev' || script === 'start')) {
+    try {
+      const composerRaw = await fs.readFile(path.join(projectPath, 'composer.json'), 'utf8');
+      const composer = JSON.parse(composerRaw.replace(/^\uFEFF/, ''));
+      if (composer?.scripts && typeof composer.scripts[script] !== 'undefined') {
+        return shell(`composer run ${script}`);
+      }
+    } catch {
+      // ignora composer ausente ou inválido
+    }
+
+    const hasPackageDev = (await readScriptCommand(projectPath, script)) !== null;
+    if (hasPackageDev) {
+      const pm = packageManager ?? 'npm';
+      const nodeCode = `const {spawn}=require('child_process');const p1=spawn('php',['artisan','serve'],{stdio:'inherit',shell:true});const p2=spawn('${pm}',['run','${script}'],{stdio:'inherit',shell:true});const k=()=>{try{p1.kill()}catch(e){}try{p2.kill()}catch(e){}process.exit()};process.on('SIGINT',k);process.on('SIGTERM',k);p1.on('exit',k);p2.on('exit',k);`;
+      return {
+        file: process.execPath,
+        args: ['-e', nodeCode],
+        display: `php artisan serve & ${pm} run ${script}`,
+      };
+    }
+
+    return shell('php artisan serve');
+  }
+
+  const isDjango = stack.includes('django');
+  if (isDjango && (script === 'dev' || script === 'start')) {
+    const hasPackageScript = (await readScriptCommand(projectPath, script)) !== null;
+    if (!hasPackageScript) {
+      return shell('python manage.py runserver');
+    }
+  }
+
+  return buildCommand(packageManager, script);
+}
+
 export interface ScriptContext {
   readonly scripts: readonly string[];
   readonly defaultScript: string | null;

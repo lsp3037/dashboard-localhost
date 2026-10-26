@@ -121,6 +121,8 @@ function attachLineReader(stream: Readable, onLine: (line: string) => void): voi
 export async function startRun(input: StartRunInput): Promise<RunHandle> {
   const config = getConfig();
   const { project, script, command, scriptCommand } = input;
+  const isLaravel = project.stack.includes('laravel');
+  const targetPreferredPort = project.preferredPort ?? (isLaravel ? 8000 : null);
   const runId = randomUUID();
   const startedAt = new Date().toISOString();
 
@@ -256,10 +258,16 @@ export async function startRun(input: StartRunInput): Promise<RunHandle> {
   const handleLine = (stream: LogStream, line: string): void => {
     pushLine(stream, line);
 
-    if (state.port !== null || ended) return;
+    if (ended) return;
 
     const port = parsePortFromLine(line);
-    if (port !== null) adoptPort(port);
+    if (port !== null) {
+      if (state.port === null) {
+        adoptPort(port);
+      } else if (port !== state.port && (port === targetPreferredPort || (isLaravel && port === 8000))) {
+        adoptPort(port);
+      }
+    }
   };
 
   attachLineReader(child.stdout, (line) => {
@@ -280,7 +288,7 @@ export async function startRun(input: StartRunInput): Promise<RunHandle> {
 
     void (async () => {
       const fallback =
-        parseScriptPort(scriptCommand) ?? (state.pid === null ? null : await findPortForPidTree(state.pid));
+        parseScriptPort(scriptCommand) ?? (state.pid === null ? null : await findPortForPidTree(state.pid, targetPreferredPort));
 
       if (ended || state.status !== 'starting') return;
 
@@ -308,7 +316,7 @@ export async function startRun(input: StartRunInput): Promise<RunHandle> {
           return;
         }
 
-        const fromTree = await findPortForPidTree(pid);
+        const fromTree = await findPortForPidTree(pid, targetPreferredPort);
         if (fromTree !== null) adoptPort(fromTree);
       })();
     }, Math.min(EARLY_PORT_PROBE_MS, Math.floor(config.bootTimeoutMs / 2)));
