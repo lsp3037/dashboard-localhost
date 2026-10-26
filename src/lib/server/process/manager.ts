@@ -12,7 +12,7 @@ import {
   portInUse,
   projectMissing,
 } from '@/lib/server/errors';
-import { buildCommand, parseScriptPort, readScriptCommand, resolveRunnableScript } from '@/lib/server/process/command';
+import { buildProjectCommand, parseScriptPort, readScriptCommand, resolveRunnableScript } from '@/lib/server/process/command';
 import { killTree, killTreeSync } from '@/lib/server/process/kill';
 import { getProcessName, listListeners } from '@/lib/server/process/ports';
 import { startRun } from '@/lib/server/process/runner';
@@ -48,9 +48,25 @@ export interface ProcessManager {
 
 interface ProcessGlobal {
   __hubProcessManager?: ProcessManager;
+  __hubHandles?: Map<string, RunHandle>;
+  __hubLocks?: Map<string, Promise<void>>;
 }
 
 const globalForProcess = globalThis as typeof globalThis & ProcessGlobal;
+
+function getSharedHandles(): Map<string, RunHandle> {
+  if (globalForProcess.__hubHandles === undefined) {
+    globalForProcess.__hubHandles = new Map<string, RunHandle>();
+  }
+  return globalForProcess.__hubHandles;
+}
+
+function getSharedLocks(): Map<string, Promise<void>> {
+  if (globalForProcess.__hubLocks === undefined) {
+    globalForProcess.__hubLocks = new Map<string, Promise<void>>();
+  }
+  return globalForProcess.__hubLocks;
+}
 
 function isActiveStatus(status: RunStatus): boolean {
   return status === 'starting' || status === 'running' || status === 'stopping';
@@ -127,8 +143,8 @@ async function assertProjectDirectory(projectPath: string): Promise<void> {
 }
 
 function createProcessManager(): ProcessManager {
-  const handles = new Map<string, RunHandle>();
-  const locks = new Map<string, Promise<void>>();
+  const handles = getSharedHandles();
+  const locks = getSharedLocks();
 
   /** Fila por projeto: nunca há duas transições de start/stop concorrendo pelo mesmo id. */
   const withLock = <T>(projectId: string, task: () => Promise<T>): Promise<T> => {
@@ -218,8 +234,11 @@ function createProcessManager(): ProcessManager {
         });
       }
 
+      const isLaravel = project.stack.includes('laravel');
       const scriptCommand = await readScriptCommand(projectPath, runnableScript);
-      const targetPort = parseScriptPort(scriptCommand) ?? project.preferredPort;
+      const targetPort = isLaravel
+        ? (project.preferredPort ?? 8000)
+        : (parseScriptPort(scriptCommand) ?? project.preferredPort);
 
       // C7: porta ocupada nunca é resolvida matando o dono.
       if (targetPort !== null) {
@@ -255,7 +274,7 @@ function createProcessManager(): ProcessManager {
         }
       }
 
-      const command = buildCommand(project.packageManager, runnableScript);
+      const command = await buildProjectCommand(projectPath, project.packageManager, runnableScript, project.stack);
       const handle = await startRun({ project, script: runnableScript, command, scriptCommand });
 
       handles.set(project.id, handle);
@@ -333,10 +352,7 @@ function createProcessManager(): ProcessManager {
 }
 
 export function getProcessManager(): ProcessManager {
-  const cached = globalForProcess.__hubProcessManager;
-  if (cached !== undefined) return cached;
-
-  const manager = createProcessManager();
-  globalForProcess.__hubProcessManager = manager;
-  return manager;
+  // Em desenvolvimento ou após HMR, recria o manager delegando para os maps compartilhados em globalThis.
+  delete globalForProcess.__hubProcessManager;
+  return createProcessManager();
 }

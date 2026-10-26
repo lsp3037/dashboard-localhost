@@ -101,7 +101,10 @@ export function toProjectView(project: ProjectDTO, now: number = Date.now()): Pr
     lastActivityTitle: formatDateTime(lastActivityAt),
     shortPath: truncateMiddle(project.path, 44),
     searchText: `${project.name} ${project.packageName ?? ''} ${project.path}`.toLowerCase(),
-    cardPort: project.run?.port ?? project.preferredPort,
+    cardPort:
+      project.stack.includes('laravel') && project.run?.port === 5173
+        ? (project.preferredPort ?? 8000)
+        : (project.run?.port ?? project.preferredPort ?? (project.stack.includes('laravel') ? 8000 : null)),
     uptimeLabel:
       project.run === null ? null : formatElapsed(project.run.startedAt, project.run.endedAt ?? null, now),
   };

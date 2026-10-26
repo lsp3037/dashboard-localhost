@@ -11,6 +11,10 @@ export interface StackSignals {
 
 /** Ordem canônica de exibição das badges. */
 const TAG_ORDER: readonly StackTag[] = [
+  'laravel',
+  'php',
+  'python',
+  'django',
   'next',
   'react',
   'vite',
@@ -56,6 +60,24 @@ export function detectStack(signals: StackSignals): StackTag[] {
 
   const tags = new Set<StackTag>();
   const hasDependency = (name: string): boolean => dependencies.has(name);
+
+  if (fileNames.has('artisan') || hasDependency('laravel-vite-plugin')) {
+    tags.add('laravel');
+    tags.add('php');
+  }
+
+  if (fileNames.has('composer.json')) {
+    tags.add('php');
+  }
+
+  if (fileNames.has('manage.py')) {
+    tags.add('django');
+    tags.add('python');
+  }
+
+  if (fileNames.has('requirements.txt') || fileNames.has('pyproject.toml')) {
+    tags.add('python');
+  }
 
   if (hasDependency('next')) {
     tags.add('next');

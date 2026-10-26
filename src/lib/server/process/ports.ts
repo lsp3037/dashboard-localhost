@@ -231,7 +231,7 @@ export async function getProcessName(pid: number): Promise<string | null> {
  * Porta de um listener pertencente à árvore do run (§6.5 item 3).
  * Cruzamento somente leitura: nenhum processo é tocado.
  */
-export async function findPortForPidTree(rootPid: number): Promise<number | null> {
+export async function findPortForPidTree(rootPid: number, preferredPort?: number | null): Promise<number | null> {
   if (!Number.isInteger(rootPid) || rootPid <= 0) return null;
 
   const [pairs, listeners] = await Promise.all([listProcessPairs(), listListeners()]);
@@ -243,6 +243,13 @@ export async function findPortForPidTree(rootPid: number): Promise<number | null
 
   for (const [port, pid] of listeners.entries()) {
     if (tree.has(pid)) ports.push(port);
+  }
+
+  if (preferredPort !== undefined && preferredPort !== null && ports.includes(preferredPort)) {
+    return preferredPort;
+  }
+  if (ports.includes(8000)) {
+    return 8000;
   }
 
   ports.sort((a, b) => a - b);

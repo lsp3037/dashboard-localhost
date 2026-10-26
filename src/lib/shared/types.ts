@@ -3,6 +3,10 @@ export type ProjectSource = 'scan' | 'manual';
 export type PackageManager = 'npm' | 'pnpm' | 'yarn' | 'bun';
 
 export type StackTag =
+  | 'laravel'
+  | 'php'
+  | 'python'
+  | 'django'
   | 'next'
   | 'react'
   | 'vite'

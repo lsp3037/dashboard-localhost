@@ -363,13 +363,32 @@ async function buildProjectDraft(
 ): Promise<ProjectDraft | null> {
   const hasPackageJson = listing.names.has(PACKAGE_JSON);
   const hasGit = listing.names.has(GIT_ENTRY);
+  const hasArtisan = listing.names.has('artisan');
+  const hasComposer = listing.names.has('composer.json');
 
-  if (!hasPackageJson && !hasGit) return null;
+  if (!hasPackageJson && !hasGit && !hasArtisan && !hasComposer) return null;
 
   const packageJson = hasPackageJson ? await readPackageJson(dir) : null;
   const kind: ProjectKind = packageJson === null ? 'non-node' : 'node';
   const lockfileManager = detectLockfileManager(listing.names);
   const packageManager: PackageManager | null = packageJson === null ? null : (lockfileManager ?? 'npm');
+
+  const stack = detectStack({
+    dependencies: packageJson?.dependencyNames ?? [],
+    fileNames: listing.names,
+  });
+
+  const isLaravel = stack.includes('laravel');
+
+  let scripts = packageJson?.scripts ?? [];
+  if (scripts.length === 0 && isLaravel) {
+    scripts = ['dev'];
+  }
+
+  let preferredPort = packageJson?.declaredPort ?? null;
+  if (isLaravel && (preferredPort === null || preferredPort === 5173)) {
+    preferredPort = 8000;
+  }
 
   return {
     path: dir,
@@ -377,10 +396,10 @@ async function buildProjectDraft(
     packageName: packageJson?.name ?? null,
     parentPath,
     kind,
-    stack: packageJson === null ? [] : detectStack({ dependencies: packageJson.dependencyNames, fileNames: listing.names }),
+    stack,
     packageManager,
-    scripts: packageJson?.scripts ?? [],
-    preferredPort: packageJson?.declaredPort ?? null,
+    scripts,
+    preferredPort,
     gitBranch: null,
     gitHeadAt: null,
     hasGit,

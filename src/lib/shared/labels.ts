@@ -2,6 +2,10 @@ import type { PackageManager } from '@/lib/shared/types';
 
 /** Nome curto de cada tag de stack vinda do scan. Tags desconhecidas caem no próprio id. */
 const STACK_LABELS: Readonly<Record<string, string>> = {
+  laravel: 'Laravel',
+  php: 'PHP',
+  python: 'Python',
+  django: 'Django',
   next: 'Next.js',
   react: 'React',
   vite: 'Vite',
